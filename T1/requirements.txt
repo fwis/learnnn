@@ -1,0 +1,6 @@
+python         =           3.12.3
+numpy          =           1.26.4
+pyqt6          =           6.7.0
+pillow         =           10.3.0
+opencv         =           4.9.0
+pytorch        =           2.3.0

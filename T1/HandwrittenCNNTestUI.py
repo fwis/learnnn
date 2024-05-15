@@ -28,7 +28,7 @@ class CNNNet(nn.Module):
 
 # 加载模型
 model = CNNNet()
-model.load_state_dict(torch.load('mnist_cnn.pth'))
+model.load_state_dict(torch.load('T1/mnist_cnn.pth'))
 model.eval()
 
 # 定义一个函数，用于读取图片并将其转换为模型可以接受的格式

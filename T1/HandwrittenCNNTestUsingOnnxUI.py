@@ -165,6 +165,7 @@ class HandwrittenMainWindow(QMainWindow):
             # 获取选择的文件路径
             selected_files = file_dialog.selectedFiles()
             onnx_file_path = selected_files[0]
+            global onnx_session
             onnx_session = onnxruntime.InferenceSession(onnx_file_path)
             self.setTitle('手写体数字识别, 当前使用模型: ' + onnx_file_path)
         else:

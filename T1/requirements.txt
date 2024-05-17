@@ -4,3 +4,5 @@ pyqt6          =           6.7.0
 pillow         =           10.3.0
 opencv         =           4.9.0
 pytorch        =           2.3.0
+onnx           =           1.16.0
+onnxruntime    =           1.17.1

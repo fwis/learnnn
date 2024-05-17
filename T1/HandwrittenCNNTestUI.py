@@ -168,8 +168,7 @@ class HandwrittenMainWindow(QMainWindow):
         pil_image = PilImage.fromqimage(qimage)
 
         np_image = np.array(pil_image)
-        print(f'np_image.shape={np_image.shape}')
-        print(f'np_image.dtype={np_image.dtype}')
+
         # 找到白色区域的索引
         white_pixels = np.where(np_image > 200)
 

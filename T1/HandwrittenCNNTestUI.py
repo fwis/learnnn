@@ -6,6 +6,7 @@ from PyQt6.QtGui import QPainter, QPen, QColor, QPalette, QPaintEvent,QPixmap
 from PyQt6.QtCore import Qt, QPoint
 from PIL import Image as PilImage
 from torchvision import transforms
+import numpy as np
 
 # 定义CNN模型
 class CNNNet(nn.Module):
@@ -166,11 +167,35 @@ class HandwrittenMainWindow(QMainWindow):
         # 将QImage转换为PIL的Image
         pil_image = PilImage.fromqimage(qimage)
 
-        # 调整图像大小为28x28
-        pil_image = pil_image.resize((28, 28), PilImage.Resampling.LANCZOS)
-        #pil_image.show()
+        np_image = np.array(pil_image)
+        print(f'np_image.shape={np_image.shape}')
+        print(f'np_image.dtype={np_image.dtype}')
+        # 找到白色区域的索引
+        white_pixels = np.where(np_image > 200)
+
+        # 计算白色区域的最小外包矩形
+        min_x, max_x = np.min(white_pixels[1]), np.max(white_pixels[1])
+        min_y, max_y = np.min(white_pixels[0]), np.max(white_pixels[0])
+
+        # 计算扩展后的正方形尺寸
+        size = max(max_x - min_x + 1, max_y - min_y + 1)
+        size = int(size * 1.2)
+
+        # 计算粘贴位置，使原始内容位于正方形中央
+        paste_pos = ((size - (max_x - min_x + 1)) // 2, (size - (max_y - min_y + 1)) // 2)
+
+        sub_np_img = np_image[min_y:max_y,min_x:max_x]
+        # 将原始白色区域裁剪并粘贴到正方形中心
+        sub_pil_img = PilImage.fromarray(sub_np_img)
+        #sub_pil_img.show()
+
+        # 创建一个新的正方形图像，初始填充为黑色
+        result_pil_img = PilImage.new('L', (size, size), 0)
+        result_pil_img.paste(sub_pil_img, paste_pos)
+        #result_pil_img.show()
+
         # 使用predict_digit函数进行预测
-        predicted_digit = predict_digit(pil_image)
+        predicted_digit = predict_digit(result_pil_img)
         print(f'The predicted digit is: {predicted_digit}')
         self.result_textbox.setText(str(predicted_digit))
 

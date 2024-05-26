@@ -21,7 +21,7 @@ patch_height = 40
 patch_width = 40
 learning_rate_decay_steps = 600
 learning_rate_decay_rate = 0.988
-dsp_itv = 6
+dsp_itv = 10
 save_best = True
 early_stop = False
 metrics = 'training loss'
@@ -86,13 +86,13 @@ def load_data(batch_size = batch_size, train_img_index_path = train_img_index_pa
     train_label = np.transpose(train_label, (0, 3, 1, 2))  
     val_Y = np.transpose(val_Y, (0, 3, 1, 2))
     val_para = np.transpose(val_para, (0, 3, 1, 2))
-    print(train_Y.shape)
+    # print(train_Y.shape)
     return train_steps, train_Y, train_label, val_steps, val_Y, val_para
 
        
         
 # TODO
-def train(model, patch_width, patch_height, num_epochs, batch_size, lr, learning_rate_decay_steps, learning_rate_decay_rate, dsp_itv, ckpt_path, save_best, early_stop):
+def train(model, patch_width, patch_height, num_epochs, batch_size, lr, learning_rate_decay_steps, learning_rate_decay_rate, dsp_itv, ckpt_path, csv_path, save_best, early_stop):
     
     optimizer = optim.Adam(model.parameters(), lr=lr)
     scheduler = ExponentialLR(optimizer, gamma=learning_rate_decay_rate)
@@ -104,7 +104,9 @@ def train(model, patch_width, patch_height, num_epochs, batch_size, lr, learning
     best_val_loss = float('inf')
     wait = 0
     psnr_record = []
-
+    os.makedirs(os.path.dirname(ckpt_path), exist_ok=True)
+    os.makedirs(os.path.dirname(csv_path), exist_ok=True)
+    
     for epoch in range(num_epochs):
         model.train()
         train_generator = patch_batch_generator(train_Y, train_label, batch_size, patch_width, patch_height, random_shuffle=True)
@@ -112,7 +114,9 @@ def train(model, patch_width, patch_height, num_epochs, batch_size, lr, learning
         print('=======================================Epoch:{}/{}======================================='.format(epoch, num_epochs))
         # train
         total_train_loss = 0
-        for train_steps, (Input_batch_train, Para_batch_train) in enumerate(train_generator):
+        # for train_steps, (Input_batch_train, Para_batch_train) in enumerate(train_generator):
+        for step in range(train_steps):
+            (Input_batch_train, Para_batch_train) = next(train_generator)
             # print(f"Para_batch_train shape: {Para_batch_train.shape}")
             Y_batch_train = torch.tensor(Input_batch_train[:, 0:, :, :], dtype=torch.float32).to(device)
             S0_batch_train = torch.tensor(Para_batch_train[:, 0:1, :, :], dtype=torch.float32).to(device)
@@ -138,10 +142,10 @@ def train(model, patch_width, patch_height, num_epochs, batch_size, lr, learning
             total_train_loss += loss.item()
 
             # 打印步骤信息
-            if train_steps % dsp_itv == 0:
-                print(f'Step {train_steps}, Training Loss: {loss.item()}')
+            if step % dsp_itv == 0:
+                print(f'Step {step}, Training Loss: {loss.item()}')
 
-            train_steps += 1
+            step += 1
 
         print(f'Epoch {epoch+1}/{num_epochs} completed.')
 
@@ -154,25 +158,31 @@ def train(model, patch_width, patch_height, num_epochs, batch_size, lr, learning
         total_AoP_PSNR = 0
 
         with torch.no_grad():
-            for Input_batch_val, Para_batch_val in val_generator:
-                Y_batch_val = torch.tensor(Input_batch_val[:, 0:, :, :], dtype=torch.float32).to(device)
-                S0_batch_val = torch.tensor(Para_batch_val[:, 0:1, :, :], dtype=torch.float32).to(device)
-                DoLP_batch_val = torch.tensor(Para_batch_val[:, 1:2, :, :], dtype=torch.float32).to(device)
-                AoP_batch_val = torch.tensor(Para_batch_val[:, 2:3, :, :], dtype=torch.float32).to(device)
+            for step, (Input_batch_val, Para_batch_val) in enumerate(val_generator):
+                if step >= val_steps:
+                    break
+        for val_step in range(val_steps):
+            
+            (Input_batch_val, Para_batch_val) = next(train_generator)
+            Y_batch_val = torch.tensor(Input_batch_val[:, 0:, :, :], dtype=torch.float32).to(device)
+            S0_batch_val = torch.tensor(Para_batch_val[:, 0:1, :, :], dtype=torch.float32).to(device)
+            DoLP_batch_val = torch.tensor(Para_batch_val[:, 1:2, :, :], dtype=torch.float32).to(device)
+            AoP_batch_val = torch.tensor(Para_batch_val[:, 2:3, :, :], dtype=torch.float32).to(device)
 
-                S0_hat_val, DoLP_hat_val, AoP_hat_val = model(Y_batch_val)
-                loss_val = LOSS(S0_hat_val, S0_batch_val, DoLP_hat_val, DoLP_batch_val, AoP_hat_val, AoP_batch_val)
-                total_val_loss += loss_val.item()
+            S0_hat_val, DoLP_hat_val, AoP_hat_val = model(Y_batch_val)
+            loss_val = LOSS(S0_hat_val, S0_batch_val, DoLP_hat_val, DoLP_batch_val, AoP_hat_val, AoP_batch_val)
+            total_val_loss += loss_val.item()
 
-                total_S0_PSNR += psnr(S0_batch_val.cpu().numpy(), S0_hat_val.cpu().numpy(), 2)
-                total_DoLP_PSNR += psnr(DoLP_batch_val.cpu().numpy(), DoLP_hat_val.cpu().numpy(), 1)
-                total_AoP_PSNR += psnr(AoP_batch_val.cpu().numpy(), AoP_hat_val.cpu().numpy(), math.pi / 2)
-
-        avg_train_loss = total_train_loss / len(train_generator)
-        avg_val_loss = total_val_loss / len(val_generator)
-        avg_S0_PSNR = total_S0_PSNR / len(val_generator)
-        avg_DoLP_PSNR = total_DoLP_PSNR / len(val_generator)
-        avg_AoP_PSNR = total_AoP_PSNR / len(val_generator)
+            total_S0_PSNR += psnr(S0_batch_val.detach().cpu().numpy(), S0_hat_val.detach().cpu().numpy(), 2)
+            total_DoLP_PSNR += psnr(DoLP_batch_val.detach().cpu().numpy(), DoLP_hat_val.detach().cpu().numpy(), 1)
+            total_AoP_PSNR += psnr(AoP_batch_val.detach().cpu().numpy(), AoP_hat_val.detach().cpu().numpy(), math.pi / 2)
+            val_step += 1
+        
+        avg_train_loss = total_train_loss / step+1
+        avg_val_loss = total_val_loss / val_step+1
+        avg_S0_PSNR = total_S0_PSNR / val_step+1
+        avg_DoLP_PSNR = total_DoLP_PSNR / val_step+1
+        avg_AoP_PSNR = total_AoP_PSNR / val_step+1
 
         print(f'Epoch {epoch + 1}/{num_epochs}, Training Loss: {avg_train_loss}, Validation Loss: {avg_val_loss}')
         print(f'PSNR - S0: {avg_S0_PSNR}, DoLP: {avg_DoLP_PSNR}, AoP: {avg_AoP_PSNR}')
@@ -193,14 +203,14 @@ def train(model, patch_width, patch_height, num_epochs, batch_size, lr, learning
 
         psnr_record.append([avg_S0_PSNR, avg_DoLP_PSNR, avg_AoP_PSNR])
 
-    with open('psnr_record.csv', 'w') as f:
+    with open(csv_path, 'w') as f:
         writer = csv.writer(f)
         writer.writerows(psnr_record)
 
 
 def main():
     train(model=ForkNet().to(device), patch_width=40, patch_height=40, num_epochs=1, batch_size=256, lr=0.001,
-        learning_rate_decay_steps=600, learning_rate_decay_rate=0.988, dsp_itv=6, ckpt_path='model.ckpt',
+        learning_rate_decay_steps=600, learning_rate_decay_rate=0.988, dsp_itv=10, ckpt_path= ckpt_path, csv_path=csv_path,
         save_best=True, early_stop=False)
 
     

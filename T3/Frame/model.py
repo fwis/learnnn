@@ -1,7 +1,10 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.utils.data import Dataset
 import math
+import h5py
+
 
 class ForkNet(nn.Module):
     def __init__(self, padding='same'):
@@ -41,6 +44,64 @@ class ForkNet(nn.Module):
         return s0, dolp, aop
 
 
+class ResNet18(nn.Module):
+    def __init__(self, *args, **kwargs) -> None:
+        super(ResNet18, self).__init__(*args, **kwargs)
+        pass
+
+
+class MyDataset(Dataset):
+    def __init__(self, file_path, batch_size) -> None:
+        super(MyDataset, self).__init__()
+        self.filepath = file_path
+        self.batch_size = batch_size
+        self.file = h5py.File(file_path, 'r')
+        self.dataset_shape = self.file['data'].shape
+        
+    def __len__(self):
+        return self.dataset_shape[0] // self.batch_size
+    
+    def __getitem__(self, index):
+        start = index * self.batch_size
+        end = min(start + self.batch_size, self.dataset_shape[0])
+ 
+        data_tensor = torch.tensor(self.file['data'][start:end])
+        print('datatensor:',data_tensor.shape)
+        labels_tensor = torch.tensor(self.file['labels'][start:end])
+        
+        return data_tensor, labels_tensor
+
+
+
+def read_h5(file_path, batch_size):
+    with h5py.File(file_path, 'r') as f:
+        dataset_shape = f['data'].shape
+        for start in range(0, dataset_shape[0], batch_size):
+            end = min(start + batch_size, dataset_shape[0])  
+
+            data_chunk = f['data'][start:end]
+            labels_chunk = f['labels'][start:end]
+            data_tensor = torch.tensor(data_chunk)
+            labels_tensor = torch.tensor(labels_chunk)
+
+            yield data_tensor, labels_tensor
+
+file_path = r"D:\VScodeProjects\dataset\OL_DATA\labels.h5" 
+batch_size = 10
+
+custom_dataset = MyDataset(file_path, batch_size)
+data_loader = torch.utils.data.DataLoader(custom_dataset, batch_size=None, shuffle=True)
+
+
+for i, (data, labels) in enumerate(data_loader):
+    print("Batch", i+1)
+    print("Data tensor shape:", data.shape)
+    print("Labels tensor shape:", labels.shape)
+
+
+'''
+Loss Functions
+'''
 def mae_loss(s0_pred, s0_true, dolp_pred, dolp_true, aop_pred, aop_true):
     loss = torch.mean(0.1 * torch.abs(s0_true - s0_pred) + 
                       torch.abs(dolp_true - dolp_pred) + 
@@ -57,54 +118,12 @@ def smooth_l1_loss(reg_true, reg_pred, sigma):
     loss = torch.where(mask, 0.5 * sigma2 * diff ** 2, abs_diff - 0.5 / sigma2)
     return loss.mean()
 
+
 def smooth_loss(s0_pred, s0_true, dolp_pred, dolp_true, aop_pred, aop_true):
     loss = (0.1 * smooth_l1_loss(s0_true, s0_pred, 2) + 
             smooth_l1_loss(dolp_true, dolp_pred, 2) + 
             0.01 * smooth_l1_loss(aop_true, aop_pred, 2))
     return loss
-
-
-def ssim(ground_truth, ref, mx, window_size=11, size_average=True):
-    def gaussian(window_size, sigma):
-        gauss = torch.Tensor([math.exp(-(x - window_size // 2) ** 2 / float(2 * sigma ** 2)) for x in range(window_size)])
-        return gauss / gauss.sum()
-
-    def create_window(window_size, channel):
-        _1D_window = gaussian(window_size, 1.5).unsqueeze(1)
-        _2D_window = _1D_window.mm(_1D_window.t()).float().unsqueeze(0).unsqueeze(0)
-        window = _2D_window.expand(channel, 1, window_size, window_size).contiguous()
-        return window
-
-    def ssim_map(img1, img2, window, window_size, channel, size_average=True):
-        mu1 = F.conv2d(img1, window, padding=window_size//2, groups=channel)
-        mu2 = F.conv2d(img2, window, padding=window_size//2, groups=channel)
-
-        mu1_sq = mu1.pow(2)
-        mu2_sq = mu2.pow(2)
-        mu1_mu2 = mu1 * mu2
-
-        sigma1_sq = F.conv2d(img1 * img1, window, padding=window_size//2, groups=channel) - mu1_sq
-        sigma2_sq = F.conv2d(img2 * img2, window, padding=window_size//2, groups=channel) - mu2_sq
-        sigma12 = F.conv2d(img1 * img2, window, padding=window_size//2, groups=channel) - mu1_mu2
-
-        C1 = (0.01 * mx) ** 2
-        C2 = (0.03 * mx) ** 2
-
-        ssim_map = ((2 * mu1_mu2 + C1) * (2 * sigma12 + C2)) / ((mu1_sq + mu2_sq + C1) * (sigma1_sq + sigma2_sq + C2))
-
-        if size_average:
-            return ssim_map.mean()
-        else:
-            return ssim_map.mean(1).mean(1).mean(1)
-
-    channel = ground_truth.size(1)
-    window = create_window(window_size, channel)
-
-    if ground_truth.is_cuda:
-        window = window.cuda(ground_truth.get_device())
-    window = window.type_as(ground_truth)
-
-    return ssim_map(ground_truth, ref, window, window_size, channel, size_average)
 
 
 def LOSS(s0_pred, s0_true, dolp_pred, dolp_true, aop_pred, aop_true, max_value=math.pi/2):
@@ -114,42 +133,10 @@ def LOSS(s0_pred, s0_true, dolp_pred, dolp_true, aop_pred, aop_true, max_value=m
                       0.05 * torch.abs(aop_true - aop_pred)) - 0.02 * torch.log(C)
     return loss
 
+
 def MSE_LOSS(s0_pred, s0_true, dolp_pred, dolp_true, aop_pred, aop_true, max_value=math.pi/2):
     L, C, S, ssim_loss_value = ssim_loss(aop_true, aop_pred, mv=max_value)
     loss = torch.mean(0.1 * torch.square(s0_true - s0_pred) + 
                       torch.square(dolp_true - dolp_pred) + 
                       0.032 * torch.square(aop_true - aop_pred)) - 0.02 * torch.log(C)
     return loss
-
-
-def std_variance(x):
-    x_mean = torch.mean(x)
-    variance = torch.sqrt(torch.sum((x - x_mean) ** 2) / (x.numel() - 1))
-    return variance
-
-def covariance(x, y):
-    x_mean = torch.mean(x)
-    y_mean = torch.mean(y)
-    covariance = torch.sum((x - x_mean) * (y - y_mean)) / (x.numel() - 1)
-    return covariance
-
-def ssim_loss(x, y, mv, k1=0.01, k2=0.03):
-    c1 = (k1 * mv) ** 2
-    c2 = (k2 * mv) ** 2
-    c3 = c2 / 2
-
-    x_mean = torch.mean(x)
-    y_mean = torch.mean(y)
-    x_std_var = std_variance(x)
-    y_std_var = std_variance(y)
-    xy_covar = covariance(x, y)
-
-    L = (2 * x_mean * y_mean + c1) / (x_mean ** 2 + y_mean ** 2 + c1)
-    C = (2 * x_std_var * y_std_var + c2) / (x_std_var ** 2 + y_std_var ** 2 + c2)
-    S = (xy_covar + c3) / (x_std_var * y_std_var + c3)
-    SSIM = L * C * S
-
-    loss = 1 - SSIM
-
-    return L, C, S, loss
-

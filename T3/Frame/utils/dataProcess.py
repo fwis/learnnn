@@ -6,6 +6,7 @@ from PIL import Image
 import math
 import numpy as np
 import torch
+import h5py
 
 
 def createDofp(root_folder):
@@ -100,10 +101,53 @@ def create_labels(root_folder):
                         torch.save(img_aop, aop_path)
                         torch.save(img_dolp, dolp_path)
                         torch.save(img_s0, s0_path)
-                        # cv2.imwrite(aop_filename, img_aop)
-                        # cv2.imwrite(dolp_filename, img_dolp)
-                        # cv2.imwrite(s0_filename, img_s0)
-                        # np.save(aop_filename, img_aop)
+
+
+def merge_ptfiles(root_folder, output_file):
+    data_list = []
+    labels_list = []
+
+    for dirpath, dirnames, filenames in os.walk(root_folder):
+        for dirname in dirnames:
+            labels_path = os.path.join(dirpath, dirname, "labels")
+            if os.path.exists(labels_path):
+                aop_path = os.path.join(labels_path, dirname + '_aop.pt')
+                dolp_path = os.path.join(labels_path, dirname + '_dolp.pt')
+                s0_path = os.path.join(labels_path, dirname + '_s0.pt')
+                
+                if os.path.exists(aop_path) and os.path.exists(dolp_path) and os.path.exists(s0_path):
+                    try:
+                        img_aop = torch.load(aop_path).numpy()
+                        img_dolp = torch.load(dolp_path).numpy()
+                        img_s0 = torch.load(s0_path).numpy()
+                    except Exception as e:
+                        print(f"Error loading label files in {labels_path}: {e}")
+                        continue
+                    
+                    data_path = os.path.join(dirpath, dirname, "data")
+                    if os.path.exists(data_path):
+                        data_path = os.path.join(data_path, dirname + '_data.pt')
+                        try:
+                            data = torch.load(data_path).numpy()
+                            data_list.append(data)
+                            labels_list.append((img_aop, img_dolp, img_s0))
+                        except Exception as e:
+                            print(f"Error loading data file in {data_path}: {e}")
+
+    with h5py.File(output_file, 'w') as hf:
+        data_group = hf.create_group('data')
+        labels_group = hf.create_group('labels')
+
+        for i, data in enumerate(data_list):
+            data_group.create_dataset(f'data_{i}', data=data)
+        
+        for i, (aop, dolp, s0) in enumerate(labels_list):
+            label_group = labels_group.create_group(f'label_{i}')
+            label_group.create_dataset('aop', data=aop)
+            label_group.create_dataset('dolp', data=dolp)
+            label_group.create_dataset('s0', data=s0)
+    
+    print(f'Merged data saved to {output_file}')
 
 
 def normalize(data, lower, upper):
@@ -403,15 +447,48 @@ def sort_folders(root_dir):
         files.sort()
 
     print("文件夹排序完成！")
-    
 
-root_dir = r'C:\Users\lhr\Desktop\dataset\Polarization Image Dataset'
+def rename_tokyo(root_folder):
+    # 遍历根文件夹内的所有子文件夹
+    for folder_name in os.listdir(root_folder):
+        # 获取子文件夹的完整路径
+        folder_path = os.path.join(root_folder, folder_name)
+        # 检查路径是否为文件夹
+        if os.path.isdir(folder_path):
+            print(f"正在处理子文件夹: {folder_name}")
+            # 遍历子文件夹内的所有文件
+            for filename in os.listdir(folder_path):
+                # 检查文件是否为PNG文件
+                if filename.endswith(".png"):
+                    # 构建新的文件名
+                    new_filename = f"{folder_name}_{filename}"
+                    # 构建旧文件路径和新文件路径
+                    old_path = os.path.join(folder_path, filename)
+                    new_path = os.path.join(folder_path, new_filename)
+                    # 重命名文件
+                    os.rename(old_path, new_path)
+                    print(f"已将文件 {filename} 重命名为 {new_filename}")
+                    
+                    
+root_dir = r'D:\WORKS\Polarization\Machine_Learning\Tokyo_dataset'
+output_file = r'D:\WORKS\Polarization\Machine_Learning\Tokyo_dataset\data.h5'
 # rename_fork(root_dir)
 # rename_img(root_dir)
 # rename_PIF(root_dir)
-create_labels(root_dir)
-createDofp(root_dir)
+# create_labels(root_dir)
+# createDofp(root_dir)
+merge_ptfiles(root_dir, output_file)
 
+
+
+# source_parent_folder = r'C:\Users\lhr\Desktop\OL_DATA'
+# move_files_to_parent(source_parent_folder)
+
+# source_parent_folder = r'C:\Users\lhr\Desktop\OL_DATA'
+# 获取最低一级子文件夹
+
+# base_folder = r"F:\新建文件夹\training_set"
+# organize_images_by_identifier(base_folder)
 
 # folders = [r'C:\Users\lhr\Desktop\PIF_dataset\0', r'C:\Users\lhr\Desktop\PIF_dataset\45', r'C:\Users\lhr\Desktop\PIF_dataset\90', r'C:\Users\lhr\Desktop\PIF_dataset\135']
 # rename_and_move_images(folders)
@@ -428,39 +505,3 @@ createDofp(root_dir)
 #         # 如果存在，则删除文件夹及其内容
 #         print("Deleting folder:", folder_path)
 #         os.system("rmdir /s /q " + folder_path)
-
-
-# # 指定输入文件夹
-# input_folder = r"C:\Users\lhr\Desktop\sorted_images"
-# output_folder = r"C:\Users\lhr\Desktop\rotated"
-
-# rotate_images(input_folder, output_folder)
-
-# rename(r"C:\Users\lhr\Desktop\sorted_images")
-
-# root_folder = r"C:\Users\lhr\Desktop\DoFP_data_blur\Forknet"
-# createDofp(root_folder)
-
-# img_path = r"C:\Users\lhr\Desktop\data1"
-# crop_img(img_path)
-
-
-# source_parent_folder = r'C:\Users\lhr\Desktop\OL_DATA'
-# move_files_to_parent(source_parent_folder)
-
-# source_parent_folder = r'C:\Users\lhr\Desktop\OL_DATA'
-# 获取最低一级子文件夹
-
-# base_folder = r"F:\新建文件夹\training_set"
-# organize_images_by_identifier(base_folder)
-
-
-
-# folder_path = r'F:\WORKS\Polarization\data\Forknet'
-# bmp_to_png(folder_path)
-
-# img_path = r"C:\Users\lhr\Desktop\DoFP_data"
-# resize_images(img_path)
-
-# img_path = r"C:\Users\lhr\Desktop\DoFP_data"
-# img_blur(img_path)

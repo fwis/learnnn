@@ -30,7 +30,6 @@ def load_images(folder):
     return images
 
 
-#FIXME
 def create_labels(root_folder):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     dofp_list = []
@@ -57,6 +56,7 @@ def create_labels(root_folder):
                 img_aop = aop(images[0], images[45], images[90], images[135])
                 img_dolp = dolp(images[0], images[45], images[90], images[135])
                 img_s0 = 1/2 * (images[0] + images[45] + images[90] + images[135])
+                print(torch.max(img_dolp))
                 # print(dofp.shape)
                 # print(img_aop.shape)
                 dofp_list.append(dofp)
@@ -86,5 +86,5 @@ root_path = r'D:\VScodeProjects\dataset\OL_DATA'
 label_path = r'D:\VScodeProjects\dataset\OL_DATA\labels.h5'
 dofp_tensor, s0_tensor, aop_tensor, dolp_tensor = create_labels(root_path)
 print(dofp_tensor.shape)
-print(dolp_tensor.shape)
-generate_labels(dofp_tensor, s0_tensor, aop_tensor, dolp_tensor, label_path)
+
+# generate_labels(dofp_tensor, s0_tensor, aop_tensor, dolp_tensor, label_path)

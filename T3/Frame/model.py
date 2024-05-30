@@ -51,52 +51,34 @@ class ResNet18(nn.Module):
 
 
 class MyDataset(Dataset):
-    def __init__(self, file_path, batch_size) -> None:
+    def __init__(self, file_path) -> None:
         super(MyDataset, self).__init__()
-        self.filepath = file_path
-        self.batch_size = batch_size
-        self.file = h5py.File(file_path, 'r')
-        self.dataset_shape = self.file['data'].shape
+        self.file_path = file_path
+        self.h5file = h5py.File(self.file_path, 'r')
+        self.data = self.h5file['data']
         
     def __len__(self):
-        return self.dataset_shape[0] // self.batch_size
+        return len(self.data)
     
-    def __getitem__(self, index):
-        start = index * self.batch_size
-        end = min(start + self.batch_size, self.dataset_shape[0])
- 
-        data_tensor = torch.tensor(self.file['data'][start:end])
-        print('datatensor:',data_tensor.shape)
-        labels_tensor = torch.tensor(self.file['labels'][start:end])
-        
-        return data_tensor, labels_tensor
+    def __getitem__(self, idx):
+        data = torch.from_numpy(self.h5file[f'data/data_{idx}'][...])
+        aop = torch.from_numpy(self.h5file[f'labels/label_{idx}/aop'][...])
+        dolp = torch.from_numpy(self.h5file[f'labels/label_{idx}/dolp'][...])
+        s0 = torch.from_numpy(self.h5file[f'labels/label_{idx}/s0'][...])
+        return data, aop, dolp, s0
 
 
-
-def read_h5(file_path, batch_size):
-    with h5py.File(file_path, 'r') as f:
-        dataset_shape = f['data'].shape
-        for start in range(0, dataset_shape[0], batch_size):
-            end = min(start + batch_size, dataset_shape[0])  
-
-            data_chunk = f['data'][start:end]
-            labels_chunk = f['labels'][start:end]
-            data_tensor = torch.tensor(data_chunk)
-            labels_tensor = torch.tensor(labels_chunk)
-
-            yield data_tensor, labels_tensor
-
-file_path = r"D:\VScodeProjects\dataset\OL_DATA\labels.h5" 
+file_path = r"E:\data\data_h5\data_pim.h5"
 batch_size = 10
 
-custom_dataset = MyDataset(file_path, batch_size)
-data_loader = torch.utils.data.DataLoader(custom_dataset, batch_size=None, shuffle=True)
+custom_dataset = MyDataset(file_path)
+data_loader = torch.utils.data.DataLoader(custom_dataset, batch_size=batch_size, shuffle=True)
 
 
-for i, (data, labels) in enumerate(data_loader):
+for i, (data,aop,dolp,s0) in enumerate(data_loader):
     print("Batch", i+1)
     print("Data tensor shape:", data.shape)
-    print("Labels tensor shape:", labels.shape)
+    print("Labels tensor shape:", aop.shape)
 
 
 '''
@@ -140,3 +122,37 @@ def MSE_LOSS(s0_pred, s0_true, dolp_pred, dolp_true, aop_pred, aop_true, max_val
                       torch.square(dolp_true - dolp_pred) + 
                       0.032 * torch.square(aop_true - aop_pred)) - 0.02 * torch.log(C)
     return loss
+
+
+def std_variance(x):
+    x_mean = torch.mean(x)
+    variance = torch.sqrt(torch.sum((x - x_mean) ** 2) / (x.numel() - 1))
+    return variance
+
+
+def covariance(x, y):
+    x_mean = torch.mean(x)
+    y_mean = torch.mean(y)
+    covariance = torch.sum((x - x_mean) * (y - y_mean)) / (x.numel() - 1)
+    return covariance
+
+
+def ssim_loss(x, y, mv, k1=0.01, k2=0.03):
+    c1 = (k1 * mv) ** 2
+    c2 = (k2 * mv) ** 2
+    c3 = c2 / 2
+
+    x_mean = torch.mean(x)
+    y_mean = torch.mean(y)
+    x_std_var = std_variance(x)
+    y_std_var = std_variance(y)
+    xy_covar = covariance(x, y)
+
+    L = (2 * x_mean * y_mean + c1) / (x_mean ** 2 + y_mean ** 2 + c1)
+    C = (2 * x_std_var * y_std_var + c2) / (x_std_var ** 2 + y_std_var ** 2 + c2)
+    S = (xy_covar + c3) / (x_std_var * y_std_var + c3)
+    SSIM = L * C * S
+
+    loss = 1 - SSIM
+
+    return L, C, S, loss

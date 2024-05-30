@@ -1,7 +1,10 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.utils.data import Dataset
 import math
+import h5py
+
 
 class ForkNet(nn.Module):
     def __init__(self, padding='same'):
@@ -41,6 +44,46 @@ class ForkNet(nn.Module):
         return s0, dolp, aop
 
 
+class ResNet18(nn.Module):
+    def __init__(self, *args, **kwargs) -> None:
+        super(ResNet18, self).__init__(*args, **kwargs)
+        pass
+
+
+class MyDataset(Dataset):
+    def __init__(self, file_path) -> None:
+        super(MyDataset, self).__init__()
+        self.file_path = file_path
+        self.h5file = h5py.File(self.file_path, 'r')
+        self.data = self.h5file['data']
+        
+    def __len__(self):
+        return len(self.data)
+    
+    def __getitem__(self, idx):
+        data = torch.from_numpy(self.h5file[f'data/data_{idx}'][...])
+        aop = torch.from_numpy(self.h5file[f'labels/label_{idx}/aop'][...])
+        dolp = torch.from_numpy(self.h5file[f'labels/label_{idx}/dolp'][...])
+        s0 = torch.from_numpy(self.h5file[f'labels/label_{idx}/s0'][...])
+        return data, aop, dolp, s0
+
+
+file_path = r"E:\data\data_h5\data_pim.h5"
+batch_size = 10
+
+custom_dataset = MyDataset(file_path)
+data_loader = torch.utils.data.DataLoader(custom_dataset, batch_size=batch_size, shuffle=True)
+
+
+for i, (data,aop,dolp,s0) in enumerate(data_loader):
+    print("Batch", i+1)
+    print("Data tensor shape:", data.shape)
+    print("Labels tensor shape:", aop.shape)
+
+
+'''
+Loss Functions
+'''
 def mae_loss(s0_pred, s0_true, dolp_pred, dolp_true, aop_pred, aop_true):
     loss = torch.mean(0.1 * torch.abs(s0_true - s0_pred) + 
                       torch.abs(dolp_true - dolp_pred) + 
@@ -57,54 +100,12 @@ def smooth_l1_loss(reg_true, reg_pred, sigma):
     loss = torch.where(mask, 0.5 * sigma2 * diff ** 2, abs_diff - 0.5 / sigma2)
     return loss.mean()
 
+
 def smooth_loss(s0_pred, s0_true, dolp_pred, dolp_true, aop_pred, aop_true):
     loss = (0.1 * smooth_l1_loss(s0_true, s0_pred, 2) + 
             smooth_l1_loss(dolp_true, dolp_pred, 2) + 
             0.01 * smooth_l1_loss(aop_true, aop_pred, 2))
     return loss
-
-
-def ssim(ground_truth, ref, mx, window_size=11, size_average=True):
-    def gaussian(window_size, sigma):
-        gauss = torch.Tensor([math.exp(-(x - window_size // 2) ** 2 / float(2 * sigma ** 2)) for x in range(window_size)])
-        return gauss / gauss.sum()
-
-    def create_window(window_size, channel):
-        _1D_window = gaussian(window_size, 1.5).unsqueeze(1)
-        _2D_window = _1D_window.mm(_1D_window.t()).float().unsqueeze(0).unsqueeze(0)
-        window = _2D_window.expand(channel, 1, window_size, window_size).contiguous()
-        return window
-
-    def ssim_map(img1, img2, window, window_size, channel, size_average=True):
-        mu1 = F.conv2d(img1, window, padding=window_size//2, groups=channel)
-        mu2 = F.conv2d(img2, window, padding=window_size//2, groups=channel)
-
-        mu1_sq = mu1.pow(2)
-        mu2_sq = mu2.pow(2)
-        mu1_mu2 = mu1 * mu2
-
-        sigma1_sq = F.conv2d(img1 * img1, window, padding=window_size//2, groups=channel) - mu1_sq
-        sigma2_sq = F.conv2d(img2 * img2, window, padding=window_size//2, groups=channel) - mu2_sq
-        sigma12 = F.conv2d(img1 * img2, window, padding=window_size//2, groups=channel) - mu1_mu2
-
-        C1 = (0.01 * mx) ** 2
-        C2 = (0.03 * mx) ** 2
-
-        ssim_map = ((2 * mu1_mu2 + C1) * (2 * sigma12 + C2)) / ((mu1_sq + mu2_sq + C1) * (sigma1_sq + sigma2_sq + C2))
-
-        if size_average:
-            return ssim_map.mean()
-        else:
-            return ssim_map.mean(1).mean(1).mean(1)
-
-    channel = ground_truth.size(1)
-    window = create_window(window_size, channel)
-
-    if ground_truth.is_cuda:
-        window = window.cuda(ground_truth.get_device())
-    window = window.type_as(ground_truth)
-
-    return ssim_map(ground_truth, ref, window, window_size, channel, size_average)
 
 
 def LOSS(s0_pred, s0_true, dolp_pred, dolp_true, aop_pred, aop_true, max_value=math.pi/2):
@@ -113,6 +114,7 @@ def LOSS(s0_pred, s0_true, dolp_pred, dolp_true, aop_pred, aop_true, max_value=m
                       torch.abs(dolp_true - dolp_pred) + 
                       0.05 * torch.abs(aop_true - aop_pred)) - 0.02 * torch.log(C)
     return loss
+
 
 def MSE_LOSS(s0_pred, s0_true, dolp_pred, dolp_true, aop_pred, aop_true, max_value=math.pi/2):
     L, C, S, ssim_loss_value = ssim_loss(aop_true, aop_pred, mv=max_value)
@@ -127,11 +129,13 @@ def std_variance(x):
     variance = torch.sqrt(torch.sum((x - x_mean) ** 2) / (x.numel() - 1))
     return variance
 
+
 def covariance(x, y):
     x_mean = torch.mean(x)
     y_mean = torch.mean(y)
     covariance = torch.sum((x - x_mean) * (y - y_mean)) / (x.numel() - 1)
     return covariance
+
 
 def ssim_loss(x, y, mv, k1=0.01, k2=0.03):
     c1 = (k1 * mv) ** 2
@@ -152,4 +156,3 @@ def ssim_loss(x, y, mv, k1=0.01, k2=0.03):
     loss = 1 - SSIM
 
     return L, C, S, loss
-

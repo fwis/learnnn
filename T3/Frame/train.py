@@ -1,12 +1,11 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.utils.data import DataLoader, TensorDataset
+from torch.utils.data import DataLoader, Dataset
 from torch.optim.lr_scheduler import ExponentialLR
 import numpy as np
 import h5py
 from model import ForkNet, MSE_LOSS, LOSS, smooth_loss
-from utils.batch_generator import patch_batch_generator
 from utils.utils import dolp, psnr, normalize, aop, gs_rand_choice
 import matplotlib.pyplot as plt
 import os
@@ -77,31 +76,6 @@ def train(args, model, device, train_loader, optimizer, epoch):
         # 优化模型参数
         optimizer.step()
 
-def train_ch6(net, train_iter, test_iter, num_epochs, lr, device):
-    """Train a model with a GPU (defined in Chapter 6).
-
-    Defined in :numref:`sec_lenet`"""
-    def init_weights(m):
-        if type(m) == nn.Linear or type(m) == nn.Conv2d:
-            nn.init.xavier_uniform_(m.weight)
-    net.apply(init_weights)
-    print('training on', device)
-    net.to(device)
-    optimizer = torch.optim.SGD(net.parameters(), lr=lr)
-    loss = nn.CrossEntropyLoss()
-    timer, num_batches =  len(train_iter)
-    for epoch in range(num_epochs):
-        # Sum of training loss, sum of training accuracy, no. of examples
-        net.train()
-        for i, (X, y) in enumerate(train_iter):
-            timer.start()
-            optimizer.zero_grad()
-            X, y = X.to(device), y.to(device)
-            y_hat = net(X)
-            l = loss(y_hat, y)
-            l.backward()
-            optimizer.step()
-            timer.stop()
             
             
 def main():

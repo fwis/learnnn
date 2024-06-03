@@ -150,6 +150,37 @@ def merge_ptfiles(root_folder, output_file):
     print(f'Merged data saved to {output_file}')
 
 
+def slice_and_save_to_h5(dofp_tensor, s0_tensor, aop_tensor, dolp_tensor, label_path, patch_size, stride):
+    data_patches = []
+    s0_patches = []
+    aop_patches = []
+    dolp_patches = []
+
+    for i in range(dofp_tensor.shape[0]):
+        dofp = dofp_tensor[i]
+        s0 = s0_tensor[i]
+        aop = aop_tensor[i]
+        dolp = dolp_tensor[i]
+
+        for y in range(0, dofp.shape[2] - patch_size + 1, stride):
+            for x in range(0, dofp.shape[3] - patch_size + 1, stride):
+                data_patches.append(dofp[:, y:y+patch_size, x:x+patch_size])
+                s0_patches.append(s0[:, y:y+patch_size, x:x+patch_size])
+                aop_patches.append(aop[:, y:y+patch_size, x:x+patch_size])
+                dolp_patches.append(dolp[:, y:y+patch_size, x:x+patch_size])
+
+    data_patches = torch.stack(data_patches)
+    s0_patches = torch.stack(s0_patches)
+    aop_patches = torch.stack(aop_patches)
+    dolp_patches = torch.stack(dolp_patches)
+
+    with h5py.File(label_path, 'w') as f:
+        f.create_dataset('data', data=data_patches.cpu().numpy())
+        f.create_dataset('s0', data=s0_patches.cpu().numpy())
+        f.create_dataset('aop', data=aop_patches.cpu().numpy())
+        f.create_dataset('dolp', data=dolp_patches.cpu().numpy())
+
+
 def normalize(data, lower, upper):
     mx = np.max(data)
     mn = np.min(data)
@@ -402,11 +433,7 @@ def rename_fork(root_dir):
 def rename_OL(root_dir):          
     for root, dirs, files in os.walk(root_dir):
         for file in files:
-            if file.startswith("image"):
-                file_path = os.path.join(root, file)
-                new_file_name = os.path.basename(root) + "_" + file.split("_")[-1]
-                new_file_path = os.path.join(root, new_file_name)
-                os.rename(file_path, new_file_path)
+
             if "_" in file:
                 parts = file.split("_")
                 # if len(parts) > 2 :
@@ -470,15 +497,15 @@ def rename_tokyo(root_folder):
                     print(f"已将文件 {filename} 重命名为 {new_filename}")
                     
                     
-root_dir = r'D:\WORKS\Polarization\Machine_Learning\Tokyo_dataset'
-output_file = r'D:\WORKS\Polarization\Machine_Learning\Tokyo_dataset\data.h5'
+root_dir = r'D:\WORKS\OL_DATA'
+# output_file = r'D:\WORKS\Polarization\Machine_Learning\Tokyo_dataset\data.h5'
 # rename_fork(root_dir)
 # rename_img(root_dir)
 # rename_PIF(root_dir)
 # create_labels(root_dir)
 # createDofp(root_dir)
-merge_ptfiles(root_dir, output_file)
-
+# merge_ptfiles(root_dir, output_file)
+rename_OL(root_dir)
 
 
 # source_parent_folder = r'C:\Users\lhr\Desktop\OL_DATA'

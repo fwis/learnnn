@@ -58,17 +58,6 @@ class Residual(nn.Module):
         Y += X
         return F.relu(Y)
 
-def resnet_block(input_channels, num_channels, num_residuals,
-                 first_block=False):
-    blk = []
-    for i in range(num_residuals):
-        if i == 0 and not first_block:
-            blk.append(Residual(input_channels, num_channels,
-                                use_1x1conv=True, strides=2))
-        else:
-            blk.append(Residual(num_channels, num_channels))
-    return blk
-
 
 class Bottleneck(nn.Module):
     def __init__(self, in_channel, out_channel, strides=1, same_shape=True, bottle=True):
@@ -98,4 +87,14 @@ class Bottleneck(nn.Module):
         if not self.same_shape or not self.bottle:
             x = self.bn4(self.conv4(x))
         return F.relu(out + x)
+
+
+def resnet_block(input_channels, num_channels, num_residuals, first_block=False):
+    blk = []
+    for i in range(num_residuals):
+        if i == 0 and not first_block:
+            blk.append(Residual(input_channels, num_channels, use_1x1conv=True, strides=2))
+        else:
+            blk.append(Residual(num_channels, num_channels))
+    return nn.Sequential(*blk)
 

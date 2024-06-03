@@ -16,6 +16,7 @@ import NNs as mynns
 pth_file_path = 'D:/Neural_Networks/learnnn/T2/mnist_ResNet2.pth'
 num_blocks = [1, 1, 0, 0]
 num_classes = 10
+mothed_name = 'ResNet2'
 pth_model = mynns.ResNet(mynns.ResNet.Residual, num_blocks, num_classes=num_classes)
 pth_model.load_state_dict(torch.load(pth_file_path, map_location=torch.device('cpu')))
 pth_model.eval()  # 设置模型为评估模式
@@ -122,7 +123,6 @@ class CamWidget(QWidget):
         self.setAutoFillBackground(True)
 
     def set_heatmap(self, heatmap):
-        print('set_heatmap')
         black_image = np.zeros((280, 280, 3), dtype=np.uint8)  # 三通道 RGB 图像
         black_height, black_width, black_channels = black_image.shape
         black_qimage = QImage(black_image.data, black_width, black_height, 3 * black_width, QImage.Format.Format_RGB888)
@@ -144,10 +144,16 @@ class CamWidget(QWidget):
         self.label.setPixmap(pixmap)
 
 def predict_digit(pil_image):
+    global mothed_name
     tensor_image = load_and_preprocess_image(pil_image) # (1, 1, 28, 28)
     with torch.no_grad():
         output = pth_model(tensor_image)
-        target_layers = [pth_model.layer2[-1]]
+        if mothed_name == 'ResNet2':
+            target_layers = [pth_model.layer2[-1].conv3]
+        elif mothed_name == 'FCN':
+            target_layers = [pth_model.conv5]
+        elif mothed_name == 'CNN':
+            target_layers = [pth_model.conv1, pth_model.conv2]
         predicted_digit = output.argmax(dim=1).item()
 
     heatmap = generate_cam_heatmap(target_layers, tensor_image)
@@ -176,6 +182,7 @@ class HandwrittenMainWindow(QMainWindow):
         self.handwrittenWidget = HandwrittenWidget()
         self.camWidget = CamWidget()  # 创建热力图组件
         self.processed_image = None
+        self.heatmap = None
 
         # 创建LoadModel按钮
         self.loadModelButton = QPushButton('Load Model', self)
@@ -209,6 +216,11 @@ class HandwrittenMainWindow(QMainWindow):
         self.saveProcessedButton.setFixedSize(150, 40)
         self.saveProcessedButton.clicked.connect(self.onSaveProcessedImageClicked)
         
+        # 创建 Save Heatmap 按钮
+        self.saveHeatmapButton = QPushButton('Save Heatmap', self)
+        self.saveHeatmapButton.setFixedSize(150, 40)
+        self.saveHeatmapButton.clicked.connect(self.onSaveHeatmapClicked)
+        
         # 创建 Result 文本框
         self.result_textbox = QTextEdit(self)
         self.result_textbox.setFixedSize(100, 40)
@@ -229,6 +241,7 @@ class HandwrittenMainWindow(QMainWindow):
         bottomLayout.addWidget(self.recognizeButton)
         bottomLayout.addWidget(self.saveButton)
         bottomLayout.addWidget(self.saveProcessedButton)
+        bottomLayout.addWidget(self.saveHeatmapButton)
         bottomLayout.addWidget(self.result_textbox)
         #  bottomLayout.setSizeConstraint(QLayout.SetFixedSize)
 
@@ -242,9 +255,11 @@ class HandwrittenMainWindow(QMainWindow):
         
     def clearProcessedImage(self):
         self.processed_image = None
+        self.heatmap = None
     
     def onLoadModelClicked(self):
         global pth_model
+        global mothed_name
         # 设置初始目录
         current_path = os.getcwd()
         file_dialog = QFileDialog()
@@ -260,13 +275,16 @@ class HandwrittenMainWindow(QMainWindow):
             selected_files = file_dialog.selectedFiles()
             pth_file_path = selected_files[0]
             if 'ResNet2' in pth_file_path:
+                mothed_name = 'ResNet2'
                 num_blocks = [1, 1, 0, 0]
                 pth_model = mynns.ResNet(mynns.ResNet.Residual, num_blocks, num_classes)
                 pth_model.load_state_dict(torch.load(pth_file_path, map_location=torch.device('cpu')))
             elif 'fcn' in pth_file_path:
+                mothed_name = 'FCN'
                 pth_model = mynns.FCN(num_classes)
                 pth_model.load_state_dict(torch.load(pth_file_path, map_location=torch.device('cpu')))
             elif 'cnn' in pth_file_path:
+                mothed_name = 'CNN'
                 pth_model = mynns.CNNNet()
                 pth_model.load_state_dict(torch.load(pth_file_path, map_location=torch.device('cpu')))
             self.setTitle('手写体数字识别, 当前使用模型: ' + pth_file_path)
@@ -334,6 +352,7 @@ class HandwrittenMainWindow(QMainWindow):
 
         # 使用predict_digit函数进行预测
         predicted_digit, heatmap = predict_digit(result_pil_img)
+        self.heatmap = heatmap
         print(f'The predicted digit is: {predicted_digit}')
         self.result_textbox.setText(str(predicted_digit))
         self.camWidget.set_heatmap(heatmap)  # 显示热力图
@@ -348,6 +367,18 @@ class HandwrittenMainWindow(QMainWindow):
                 print("No file selected.")
         else:
             QMessageBox.warning(self, "No Processed Image", "There is no processed image to save. Please recognize an image first.")
+    
+    def onSaveHeatmapClicked(self):
+        if self.heatmap is not None:
+            file_path, _ = QFileDialog.getSaveFileName(self, "Save Heatmap", "", "PNG Files (*.png);;JPEG Files (*.jpg)")
+            if file_path:
+                pil_heatmap = PilImage.fromarray(self.heatmap)
+                big_heatmap = pil_heatmap.resize((280, 280))
+                big_heatmap.save(file_path)
+            else:
+                print("No file selected.")
+        else:
+            QMessageBox.warning(self, "No Heatmap", "There is no Heatmap to save. Please recognize an image first.")
     
     def onSaveImageClicked(self):
         qimage = self.handwrittenWidget.getPixmap()

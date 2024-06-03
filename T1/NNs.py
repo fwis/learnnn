@@ -18,7 +18,7 @@ class ResNet(nn.Module):
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
         final_out_channels = self.get_final_out_channels(block, num_blocks)
         self.fc = nn.Linear(final_out_channels if block == self.Residual else 2048, num_classes)
-
+            
     # 残差块
     class Residual(nn.Module):
         def __init__(self, input_channels, num_channels, use_1x1conv=False, strides=1):
@@ -57,6 +57,7 @@ class ResNet(nn.Module):
                 return layers[i-1] if i > 0 else 64
         return layers[3] if block == self.Residual else layers[3] * 4
     
+    
     def forward(self, x):
         x = self.conv1(x)
         x = self.bn1(x)
@@ -82,6 +83,7 @@ class FCN(nn.Module):
         # GAP前卷积层，输出通道数应与类别数(10个数字)相同
         self.conv5 = nn.Conv2d(in_channels=256, out_channels=num_classes, kernel_size=3, padding=1)
 
+    
     def forward(self, x):
         x = F.relu(self.conv1(x))
         #x = self.dropout(x)
@@ -110,7 +112,7 @@ class CNNNet(nn.Module):
         self.fc2 = nn.Linear(1024, 10)
         self.pool = nn.MaxPool2d(kernel_size=2, stride=2, padding=0)
         self.relu = nn.ReLU()
-
+    
     def forward(self, x):
         x = self.pool(self.relu(self.conv1(x)))
         x = self.pool(self.relu(self.conv2(x)))

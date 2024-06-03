@@ -2,7 +2,7 @@ import sys
 import os
 import torch
 import torch.nn as nn
-from PyQt6.QtWidgets import QApplication, QMainWindow, QHBoxLayout, QVBoxLayout, QWidget, QPushButton, QTextEdit, QFileDialog, QLabel
+from PyQt6.QtWidgets import QApplication, QMainWindow, QHBoxLayout, QVBoxLayout, QWidget, QPushButton, QTextEdit, QFileDialog, QLabel, QMessageBox, QCheckBox
 from PyQt6.QtGui import QPainter, QPen, QColor, QPalette, QPaintEvent, QPixmap, QImage
 from PyQt6.QtCore import Qt, QPoint
 from PIL import Image as PilImage
@@ -25,18 +25,6 @@ def load_and_preprocess_image(image):
     image = transform(image).unsqueeze(0)  # 增加一个维度，因为模型期望的输入是[batch_size, channels, height, width]
     return image
 
-# 定义一个函数，用于预测图片中的数字
-def predict_digit(pil_image):
-    input_name = onnx_session.get_inputs()[0].name
-    output_name = onnx_session.get_outputs()[0].name
-    tensor_image = load_and_preprocess_image(pil_image)
-    np_image = tensor_image.numpy()
-    result = onnx_session.run([output_name], {input_name: np_image})[0]
-    predicted_digit = np.argmax(result, axis=1).item()
-    #with torch.no_grad():
-    #    output = model(image)
-    #    predicted_digit = output.argmax().item()
-    return predicted_digit
 
 class HandwrittenWidget(QWidget):
     def __init__(self, parent=None):
@@ -160,12 +148,9 @@ class HandwrittenMainWindow(QMainWindow):
         self.handwrittenWidget = HandwrittenWidget()
         self.camWidget = CamWidget()  # 创建热力图组件
 
-        # 创建手绘组件实例
-        # self.handwrittenWidget = HandwrittenWidget()
-
         # 创建LoadModel按钮
         self.loadModelButton = QPushButton('Load Model', self)
-        self.loadModelButton.setFixedSize(200, 40)
+        self.loadModelButton.setFixedSize(150, 40)
         self.loadModelButton.clicked.connect(self.onLoadModelClicked)
 
         self.loadImageButton = QPushButton('Load Image', self)
@@ -192,12 +177,18 @@ class HandwrittenMainWindow(QMainWindow):
         self.saveProcessedButton.setFixedSize(150, 40)
         self.saveProcessedButton.clicked.connect(self.onSaveProcessedImageClicked)
         
+        # 创建一个复选框用于选择是否生成CAM
+        self.camCheckBox = QCheckBox('Generate CAM', self)
+        self.camCheckBox.setChecked(False)
+        self.camCheckBox.stateChanged.connect(self.onCamCheckBoxChanged)
+        
         # 创建 Result 文本框
         self.result_textbox = QTextEdit(self)
         self.result_textbox.setFixedSize(100, 40)
 
         # 设置布局
         layout = QVBoxLayout()
+        
         
         topLayout = QHBoxLayout()
         topLayout.addStretch(1)
@@ -212,6 +203,7 @@ class HandwrittenMainWindow(QMainWindow):
         bottomLayout.addWidget(self.recognizeButton)
         bottomLayout.addWidget(self.saveButton)
         bottomLayout.addWidget(self.saveProcessedButton)
+        bottomLayout.addWidget(self.camCheckBox)  # 添加复选框
         bottomLayout.addWidget(self.result_textbox)
         #  bottomLayout.setSizeConstraint(QLayout.SetFixedSize)
 
@@ -222,9 +214,13 @@ class HandwrittenMainWindow(QMainWindow):
         centralWidget = QWidget()
         centralWidget.setLayout(layout)
         self.setCentralWidget(centralWidget)
-        
         self.processed_image = None
         
+        self.camWidget.setVisible(False)
+
+    def onCamCheckBoxChanged(self, state):
+        self.camWidget.setVisible(state == Qt.CheckState.Checked)
+    
     def onLoadModelClicked(self):
         # 设置初始目录
         current_path = os.getcwd()
@@ -260,16 +256,10 @@ class HandwrittenMainWindow(QMainWindow):
             pixmap = QPixmap.fromImage(qimage)
             # self.handwrittenWidget.update()
             self.handwrittenWidget.set_image(pixmap)
-             
-            # 使用模型进行预测
-            predicted_digit, heatmap = predict_digit(pil_image)
-            print(f'预测的数字是: {predicted_digit}')
-            self.result_textbox.setText(str(predicted_digit))
-            self.camWidget.set_heatmap(heatmap)  # 显示热力图
+            
         else:
             print("未选择文件。")
 
-    
     def onRecognizeClicked(self):
         # 使用grab()方法获取子控件的内容
         qpixmap = self.handwrittenWidget.getPixmap()
@@ -285,6 +275,10 @@ class HandwrittenMainWindow(QMainWindow):
         # 找到白色区域的索引
         white_pixels = np.where(np_image > 200)
 
+        if len(white_pixels[0]) == 0 or len(white_pixels[1]) == 0:
+            QMessageBox.warning(self, "Warning", "Please draw figure  or load image first.")
+            return
+        
         # 计算白色区域的最小外包矩形
         min_x, max_x = np.min(white_pixels[1]), np.max(white_pixels[1])
         min_y, max_y = np.min(white_pixels[0]), np.max(white_pixels[0])
@@ -311,7 +305,9 @@ class HandwrittenMainWindow(QMainWindow):
         predicted_digit, heatmap = predict_digit(result_pil_img)
         print(f'The predicted digit is: {predicted_digit}')
         self.result_textbox.setText(str(predicted_digit))
-        self.camWidget.set_heatmap(heatmap)  # 显示热力图
+        if self.camCheckBox.isChecked():
+            self.camWidget.setVisible(True)
+            self.camWidget.set_heatmap(heatmap)  # 显示热力图
 
     def onSaveProcessedImageClicked(self):
         if self.processed_image:
@@ -322,12 +318,20 @@ class HandwrittenMainWindow(QMainWindow):
             else:
                 print("No file selected.")
         else:
-            print("No processed image to save.")
+            QMessageBox.warning(self, "No Processed Image", "There is no processed image to save. Please recognize an image first.")
     
     def onSaveImageClicked(self):
-        file_path, _ = QFileDialog.getSaveFileName(self, "Save Image", "", "PNG Files (*.png);;JPEG Files (*.jpg)")
-        if file_path:
-            self.handwrittenWidget.save_image(file_path)
+        qimage = self.handwrittenWidget.getPixmap()
+        pil_image = PilImage.fromqimage(qimage)
+        np_image = np.array(pil_image)
+        
+        white_pixels = np.where(np_image > 200)
+        if len(white_pixels[0]) == 0 or len(white_pixels[1]) == 0:
+            QMessageBox.warning(self, "Warning", "Please draw figure first.")
+        else:
+            file_path, _ = QFileDialog.getSaveFileName(self, "Save Image", "", "PNG Files (*.png);;JPEG Files (*.jpg)")
+            if file_path:
+                self.handwrittenWidget.save_image(file_path)
     
     def setTitle(self, title):
         self.setWindowTitle(title)

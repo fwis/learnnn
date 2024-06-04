@@ -29,7 +29,6 @@ def normalize(data, lower, upper):
     return norm_data
 
 
-
 def aop(x_0, x_45, x_90, x_135, normalization = False):
     '''
     Calculate the AoP
@@ -78,37 +77,4 @@ def ssim(ground_truth, ref, mx):
 def count_para(model):
     total_params = sum(np.prod(p.size()) for p in model.parameters() if p.requires_grad)
     print('Trainable parameters: ', total_params)
-
-
-def gaussian_2d_array(size, std=20., mean=None, normalize=True):
-    m = np.arange(0, size[0])
-    n = np.arange(0, size[1])
-    i, j = np.meshgrid(m, n, indexing='ij')
-    if mean == None:
-        x_mean = size[1] // 2
-        y_mean = size[0] // 2
-    else:
-        x_mean = mean[0]
-        y_mean = mean[1]
-    z = 1/(2*math.pi*(std**2)) * np.exp(-((j-x_mean)**2 + (i-y_mean)**2)/(2*(std**2)))
-    if normalize:
-        sum_v = np.sum(z)
-        z = z / sum_v
-    return z
-
-
-def gaussian_2d_random_choice(sample_obj, num, std=20., mean=None, replace=False):
-    m, n = sample_obj.shape
-    prob_map = gaussian_2d_array([m, n], std=std, mean=mean).reshape(-1)
-    sample_obj = sample_obj.reshape(-1)
-    seleted_idx = np.random.choice(sample_obj, size=num, replace=replace, p=prob_map)
-    return seleted_idx
-
-
-def gs_rand_choice(range_x, range_y, num, idx_map_size=[24, 32], std=16., mean=None, replace=False):
-    # only used for current project
-    prob_map = gaussian_2d_array(idx_map_size, std=std, mean=mean).reshape(-1)
-    patch_idx = np.arange(range_x, range_y)
-    seleted_idx = np.random.choice(patch_idx, size=num, replace=replace, p=prob_map)
-    return seleted_idx
 

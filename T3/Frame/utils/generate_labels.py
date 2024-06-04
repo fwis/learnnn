@@ -26,7 +26,7 @@ def load_images(folder):
                     except ValueError:
                         print(f"Invalid angle in filename: {filename}")
                         continue
-                images[angle] = torch.from_numpy(image)
+                images[angle] = torch.from_numpy(image).float() / 255.0
     return images
 
 
@@ -55,10 +55,10 @@ def create_labels(root_folder):
                 dofp[1::2, 1::2] = images[135][1::2, 1::2]
                 img_aop = aop(images[0], images[45], images[90], images[135])
                 img_dolp = dolp(images[0], images[45], images[90], images[135])
+                img_dolp[img_dolp > 1] = 1
                 img_s0 = 1/2 * (images[0] + images[45] + images[90] + images[135])
-                print(torch.max(img_dolp))
+                # print(torch.max(img_dolp))
                 # print(dofp.shape)
-                # print(img_aop.shape)
                 dofp_list.append(dofp)
                 aop_list.append (img_aop)
                 dolp_list.append(img_dolp)
@@ -72,19 +72,118 @@ def create_labels(root_folder):
     return dofp_tensor, s0_tensor, aop_tensor, dolp_tensor
 
 
- 
-def generate_labels(dofp_tensor, s0_tensor, aop_tensor, dolp_tensor, label_path):
-    labels = torch.cat([s0_tensor, dolp_tensor, aop_tensor], dim=1).cpu()
-    Y = dofp_tensor.cpu()
+
+def merge_ptfiles(root_folder, output_file):
+    data_list = []
+    labels_list = []
+
+    for dirpath, dirnames, filenames in os.walk(root_folder):
+        for dirname in dirnames:
+            labels_path = os.path.join(dirpath, dirname, "labels")
+            if os.path.exists(labels_path):
+                aop_path = os.path.join(labels_path, dirname + '_aop.pt')
+                dolp_path = os.path.join(labels_path, dirname + '_dolp.pt')
+                s0_path = os.path.join(labels_path, dirname + '_s0.pt')
+                
+                if os.path.exists(aop_path) and os.path.exists(dolp_path) and os.path.exists(s0_path):
+                    try:
+                        img_aop = torch.load(aop_path).numpy()
+                        img_dolp = torch.load(dolp_path).numpy()
+                        img_s0 = torch.load(s0_path).numpy()
+                    except Exception as e:
+                        print(f"Error loading label files in {labels_path}: {e}")
+                        continue
+                    
+                    data_path = os.path.join(dirpath, dirname, "data")
+                    if os.path.exists(data_path):
+                        data_path = os.path.join(data_path, dirname + '_data.pt')
+                        try:
+                            data = torch.load(data_path).numpy()
+                            data_list.append(data)
+                            labels_list.append((img_aop, img_dolp, img_s0))
+                        except Exception as e:
+                            print(f"Error loading data file in {data_path}: {e}")
+
+    with h5py.File(output_file, 'w') as hf:
+        data_group = hf.create_group('data')
+        labels_group = hf.create_group('labels')
+
+        for i, data in enumerate(data_list):
+            data_group.create_dataset(f'data_{i}', data=data)
+        
+        for i, (aop, dolp, s0) in enumerate(labels_list):
+            label_group = labels_group.create_group(f'label_{i}')
+            label_group.create_dataset('aop', data=aop)
+            label_group.create_dataset('dolp', data=dolp)
+            label_group.create_dataset('s0', data=s0)
     
-    with h5py.File(label_path, 'w') as f:
-        f.create_dataset('labels', data=labels)
-        f.create_dataset('data', data=Y)
+    print(f'Merged data saved to {output_file}')
 
 
-root_path = r'D:\VScodeProjects\dataset\OL_DATA'
-label_path = r'D:\VScodeProjects\dataset\OL_DATA\labels.h5'
+def slice_and_save_to_h5(dofp_tensor, s0_tensor, aop_tensor, dolp_tensor, label_path, patch_size, stride):
+    data_patches = []
+    s0_patches = []
+    aop_patches = []
+    dolp_patches = []
+    data_list = []
+    labels_list = []
+    
+    for i in range(dofp_tensor.shape[0]):
+        dofp = dofp_tensor[i]
+        s0 = s0_tensor[i]
+        aop = aop_tensor[i]
+        dolp = dolp_tensor[i]
+        # print(dofp.shape)
+        for y in range(0, dofp.shape[1] - patch_size + 1, stride):
+            for x in range(0, dofp.shape[2] - patch_size + 1, stride):
+                data_patches.append(dofp[:, y:y+patch_size, x:x+patch_size])
+                s0_patches.append(s0[:, y:y+patch_size, x:x+patch_size])
+                aop_patches.append(aop[:, y:y+patch_size, x:x+patch_size])
+                dolp_patches.append(dolp[:, y:y+patch_size, x:x+patch_size])
+
+    data_patches = torch.stack(data_patches)
+    s0_patches = torch.stack(s0_patches)
+    aop_patches = torch.stack(aop_patches)
+    dolp_patches = torch.stack(dolp_patches)
+    
+    data_list.append(data_patches)
+    labels_list.append((aop_patches, dolp_patches, s0_patches))
+    
+            
+    with h5py.File(label_path, 'w') as hf:
+        data_group = hf.create_group('data')
+        labels_group = hf.create_group('labels')
+
+        for i, data in enumerate(data_patches):
+            data_group.create_dataset(f'data_{i}', data=data.squeeze(0).cpu().numpy())
+        
+        for i, (aop, dolp, s0) in enumerate(zip(aop_patches, dolp_patches, s0_patches)):
+            label_group = labels_group.create_group(f'label_{i}')
+            label_group.create_dataset('aop', data=aop.squeeze(0).cpu().numpy())
+            label_group.create_dataset('dolp', data=dolp.squeeze(0).cpu().numpy())
+            label_group.create_dataset('s0', data=s0.squeeze(0).cpu().numpy())
+            
+    print('Finished!')
+            
+            
+root_path = r'D:\WORKS\OL_DATA'
+label_path = r'D:\WORKS\data.h5'
 dofp_tensor, s0_tensor, aop_tensor, dolp_tensor = create_labels(root_path)
-print(dofp_tensor.shape)
+patch_size = 256
+stride = 224
+slice_and_save_to_h5(dofp_tensor, s0_tensor, aop_tensor, dolp_tensor, label_path, patch_size, stride)
+
+
+ 
+# def generate_labels(dofp_tensor, s0_tensor, aop_tensor, dolp_tensor, label_path):
+#     labels = torch.cat([s0_tensor, dolp_tensor, aop_tensor], dim=1).cpu()
+#     Y = dofp_tensor.cpu()
+    
+#     with h5py.File(label_path, 'w') as f:
+#         f.create_dataset('labels', data=labels)
+#         f.create_dataset('data', data=Y)
+
 
 # generate_labels(dofp_tensor, s0_tensor, aop_tensor, dolp_tensor, label_path)
+# print(dofp_tensor.shape)
+

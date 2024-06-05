@@ -53,27 +53,6 @@ def dolp(x_0, x_45, x_90, x_135, normalization = False):
     return DoLP
 
 
-def psnr(ground_truth, ref, mx):
-    '''
-    Calculate PSNR
-    '''
-    diff = ref - ground_truth   
-    diff = diff.flatten('C')
-    rmse = np.sqrt(np.mean(diff ** 2.))
-    PSNR = 20 * np.log10(mx / rmse)
-
-    return PSNR
-
-
-def ssim(ground_truth, ref, mx):
-    '''
-    Calculate SSIM
-    '''
-    ssim = metrics.SSIM(data_range=1.0, win_size=11, win_sigma=1.5, k1=0.01, k2=0.03, eps=1e-8, reduction='mean')
-    ssim = ssim(ground_truth, ref)
-    return ssim
-
-
 def count_para(model):
     total_params = sum(np.prod(p.size()) for p in model.parameters() if p.requires_grad)
     print('Trainable parameters: ', total_params)

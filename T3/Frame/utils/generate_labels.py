@@ -8,7 +8,10 @@ import math
 import torch
 import torchvision.transforms.functional as F
 import os
+import warnings
 
+# Suppress specific warnings
+warnings.filterwarnings("ignore", category=UserWarning, message="Unsupported Windows version")
 
 def load_images(folder):
     images = {}
@@ -120,6 +123,7 @@ def merge_ptfiles(root_folder, output_file):
     print(f'Merged data saved to {output_file}')
 
 
+# Generate patches
 def slice_and_save_to_h5(dofp_tensor, s0_tensor, aop_tensor, dolp_tensor, label_path, patch_size, stride):
     data_patches = []
     s0_patches = []
@@ -140,7 +144,20 @@ def slice_and_save_to_h5(dofp_tensor, s0_tensor, aop_tensor, dolp_tensor, label_
                 s0_patches.append(s0[:, y:y+patch_size, x:x+patch_size])
                 aop_patches.append(aop[:, y:y+patch_size, x:x+patch_size])
                 dolp_patches.append(dolp[:, y:y+patch_size, x:x+patch_size])
+        
+        # Process edge region
+        if y + patch_size < dofp.shape[1]:
+            data_patches.append(dofp[:, dofp.shape[1] - patch_size:, x:x+patch_size])
+            s0_patches.append(s0[:, dofp.shape[1] - patch_size:, x:x+patch_size])
+            aop_patches.append(aop[:, dofp.shape[1] - patch_size:, x:x+patch_size])
+            dolp_patches.append(dolp[:, dofp.shape[1] - patch_size:, x:x+patch_size])
 
+        if x + patch_size < dofp.shape[2]:
+            data_patches.append(dofp[:, y:y+patch_size, dofp.shape[2] - patch_size:])
+            s0_patches.append(s0[:, y:y+patch_size, dofp.shape[2] - patch_size:])
+            aop_patches.append(aop[:, y:y+patch_size, dofp.shape[2] - patch_size:])
+            dolp_patches.append(dolp[:, y:y+patch_size, dofp.shape[2] - patch_size:])
+        
     data_patches = torch.stack(data_patches)
     s0_patches = torch.stack(s0_patches)
     aop_patches = torch.stack(aop_patches)
@@ -166,24 +183,9 @@ def slice_and_save_to_h5(dofp_tensor, s0_tensor, aop_tensor, dolp_tensor, label_
     print('Finished!')
             
             
-root_path = r'D:\WORKS\OL_DATA'
-label_path = r'D:\WORKS\data.h5'
+root_path = r'D:\WORKS\dataset\data_origin\PIF_dataset'
+label_path = r'D:\WORKS\dataset\patch_data\data_pif.h5'
 dofp_tensor, s0_tensor, aop_tensor, dolp_tensor = create_labels(root_path)
 patch_size = 256
 stride = 224
 slice_and_save_to_h5(dofp_tensor, s0_tensor, aop_tensor, dolp_tensor, label_path, patch_size, stride)
-
-
- 
-# def generate_labels(dofp_tensor, s0_tensor, aop_tensor, dolp_tensor, label_path):
-#     labels = torch.cat([s0_tensor, dolp_tensor, aop_tensor], dim=1).cpu()
-#     Y = dofp_tensor.cpu()
-    
-#     with h5py.File(label_path, 'w') as f:
-#         f.create_dataset('labels', data=labels)
-#         f.create_dataset('data', data=Y)
-
-
-# generate_labels(dofp_tensor, s0_tensor, aop_tensor, dolp_tensor, label_path)
-# print(dofp_tensor.shape)
-

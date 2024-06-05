@@ -497,7 +497,17 @@ def rename_tokyo(root_folder):
                     print(f"已将文件 {filename} 重命名为 {new_filename}")
                     
                     
-root_dir = r'D:\WORKS\OL_DATA'
+def remove_labes(root_dir):
+    for foldername, subfolders, filenames in os.walk(root_dir, topdown=False):
+        for subfolder in subfolders:
+            if subfolder == 'data' or subfolder == 'labels':
+                subfolder_path = os.path.join(foldername, subfolder)
+                for root, dirs, files in os.walk(subfolder_path, topdown=False):
+                    for file in files:
+                        os.remove(os.path.join(root, file))
+                os.rmdir(subfolder_path)
+                
+# root_dir = r'D:\WORKS\data_origin\Tokyo_dataset'
 # output_file = r'D:\WORKS\Polarization\Machine_Learning\Tokyo_dataset\data.h5'
 # rename_fork(root_dir)
 # rename_img(root_dir)
@@ -505,8 +515,8 @@ root_dir = r'D:\WORKS\OL_DATA'
 # create_labels(root_dir)
 # createDofp(root_dir)
 # merge_ptfiles(root_dir, output_file)
-rename_OL(root_dir)
-
+# rename_OL(root_dir)
+# remove_labes(root_dir)
 
 # source_parent_folder = r'C:\Users\lhr\Desktop\OL_DATA'
 # move_files_to_parent(source_parent_folder)

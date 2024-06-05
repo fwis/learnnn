@@ -5,7 +5,7 @@ import torch.optim as optim
 from torch.utils.data import DataLoader, Dataset
 import math
 import h5py
-
+from torchmetrics.functional import structural_similarity_index_measure as SSIM
 
 class ForkNet(nn.Module):
     def __init__(self, padding='same'):
@@ -78,12 +78,11 @@ def resnet_block(input_channels, num_channels, num_residuals, first_block=False)
 class ResNet(nn.Module):
     def __init__(self, num_blocks=[2, 2, 2, 2]):
         super(ResNet, self).__init__()
-        # self.in_channels = 64
         self.conv1 = nn.Conv2d(1, 64, kernel_size=9, stride=1, padding=4, bias=False)
         self.bn1 = nn.BatchNorm2d(64)
         self.relu = nn.ReLU(inplace=True)
-
-        self.layer1 = nn.Sequential(*resnet_block(32, 64, num_blocks[0], first_block=True))
+        
+        self.layer1 = nn.Sequential(*resnet_block(64, 64, num_blocks[0], first_block=True))
         self.layer2 = nn.Sequential(*resnet_block(64, 128, num_blocks[1]))
         self.layer3 = nn.Sequential(*resnet_block(128, 64, num_blocks[2]))
         
@@ -102,7 +101,7 @@ class ResNet(nn.Module):
         x = self.layer1(x)
         x = self.layer2(x)
         x = self.layer3(x)
-                
+
         aop = self.layer4_1(x)
         aop = self.conv_1(aop)
         aop = torch.atan(aop) / 2. + math.pi / 4
@@ -138,3 +137,30 @@ class MyDataset(Dataset):
 '''
 Loss Functions
 '''
+class CustomLoss(nn.Module):
+    def __init__(self, weight=1):
+        super(CustomLoss, self).__init__()
+        self.weight = weight
+        
+    def forward(self, s0_pred, s0_true, dolp_pred, dolp_true, aop_pred, aop_true):
+        # Data-based loss
+        mse_loss_aop = nn.MSELoss()(aop_pred, aop_true)
+        mse_loss_dolp = nn.MSELoss()(dolp_pred, dolp_true)
+        mse_loss_s0 = nn.MSELoss()(s0_pred, s0_true)
+        
+        Q_pred = dolp_pred * s0_pred * torch.cos(2 * aop_pred)
+        U_pred = dolp_pred * s0_pred * torch.sin(2 * aop_pred)
+        Q_true = dolp_true * s0_true * torch.cos(2 * aop_true)
+        U_true = dolp_true * s0_true * torch.sin(2 * aop_true)
+
+       # Physics informed loss
+        mse_loss_Q = nn.MSELoss()(Q_pred, Q_true)
+        mse_loss_U = nn.MSELoss()(U_pred, U_true)
+
+        # Total loss
+        total_loss  = torch.mean(0.5 * mse_loss_aop + 
+                       mse_loss_dolp + 
+                      0.5 * mse_loss_s0) + 0.1*(mse_loss_Q + mse_loss_U)
+        
+        return total_loss
+    

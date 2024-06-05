@@ -4,12 +4,8 @@ import torch.optim as optim
 from torch.utils.data import DataLoader, Dataset, random_split
 from torch.optim.lr_scheduler import ExponentialLR
 import numpy as np
-import h5py
-import matplotlib.pyplot as plt
 import os
-import math
-import csv
-from model import MyDataset, ForkNet, ResNet
+from model import MyDataset, ForkNet, ResNet, CustomLoss
 import warnings
 
 # Suppress specific warnings
@@ -27,42 +23,34 @@ def train(model, dataset, device, num_epochs=10, batch_size=32, learning_rate=0.
     
     # Model, criterion and optimizer
     model = model.to(device)
-    criterion = nn.MSELoss().to(device)
+    # criterion = nn.MSELoss().to(device)
+    criterion = CustomLoss().to(device)
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
-    
-    best_loss = float('inf')
     
     # Load model
     if os.path.exists(checkpoint_path):
         checkpoint = torch.load(checkpoint_path)
         model.load_state_dict(checkpoint['model_state_dict'])
-        optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-        best_epoch = checkpoint['epoch']
-        best_loss = checkpoint['best_loss']
-        print(f'Loaded best model from epoch {best_epoch} with loss {best_loss:.4f}')
+        print(f'Loaded checkpoint.')
         
     for epoch in range(num_epochs):
         model.train()
         running_loss = 0.0
         for i, (data, aop, dolp, s0) in enumerate(train_loader):
             inputs = data.to(device)
-            aop_labels = aop.to(device)
-            dolp_labels = dolp.to(device)
-            s0_labels = s0.to(device)
+            aop_true = aop.to(device)
+            dolp_true = dolp.to(device)
+            s0_true = s0.to(device)
             
             optimizer.zero_grad()
             
-            aop_preds, dolp_preds, s0_preds = model(inputs)
-            
-            loss_aop = criterion(aop_preds, aop_labels)
-            loss_dolp = criterion(dolp_preds, dolp_labels)
-            loss_s0 = criterion(s0_preds, s0_labels)
-            loss = loss_aop + loss_dolp + loss_s0
+            aop_pred, dolp_pred, s0_pred = model(inputs)
+            loss = criterion(s0_pred, s0_true, dolp_pred, dolp_true, aop_pred, aop_true)
             
             loss.backward()
             optimizer.step()
-            
             running_loss += loss.item()
+            
             if i % 10 == 9:
                 print(f'[Epoch {epoch + 1}, Batch {i + 1}] Train loss: {running_loss / 10:.3f}')
                 running_loss = 0.0
@@ -73,42 +61,30 @@ def train(model, dataset, device, num_epochs=10, batch_size=32, learning_rate=0.
         with torch.no_grad():
             for data, aop, dolp, s0 in val_loader:
                 inputs = data.to(device)
-                aop_labels = aop.to(device)
-                dolp_labels = dolp.to(device)
-                s0_labels = s0.to(device)
+                aop_true = aop.to(device)
+                dolp_true = dolp.to(device)
+                s0_true = s0.to(device)
                 
-                aop_preds, dolp_preds, s0_preds = model(inputs)
+                aop_pred, dolp_pred, s0_pred = model(inputs)
                 
-                loss_aop = criterion(aop_preds, aop_labels)
-                loss_dolp = criterion(dolp_preds, dolp_labels)
-                loss_s0 = criterion(s0_preds, s0_labels)
-                loss = loss_aop + loss_dolp + loss_s0
-                
+                loss = criterion(s0_pred, s0_true, dolp_pred, dolp_true, aop_pred, aop_true)
                 val_loss += loss.item()
         
         val_loss /= len(val_loader)
         print(f'Epoch {epoch + 1}, Validation Loss: {val_loss:.4f}')
-        
-        # Save best
-        if val_loss < best_loss:
-            best_loss = val_loss
-            torch.save({
-                'epoch': epoch + 1,
-                'model_state_dict': model.state_dict(),
-                'optimizer_state_dict': optimizer.state_dict(),
-                'best_loss': best_loss,
-            }, checkpoint_path)
-            print(f'Best model saved with loss: {best_loss:.4f}')
+
+        # Save checkpoint    
+        torch.save({
+            'model_state_dict': model.state_dict()
+        }, checkpoint_path)            
     
     print('Finished Training')
     
-
-    
     
 if __name__ == "__main__":
-
+    
     lr = 0.001
-    num_epochs = 8
+    num_epochs = 1
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     # model = ForkNet()
     model = ResNet()
@@ -116,6 +92,6 @@ if __name__ == "__main__":
     # file_path = r"D:\WORKS\dataset\patch_data\data_pif.h5"
     batch_size = 16
     custom_dataset = MyDataset(file_path)
-
-    train(model=model, dataset=custom_dataset, num_epochs=1, batch_size=batch_size, device=device)
+    
+    train(model=model, dataset=custom_dataset, num_epochs=num_epochs, batch_size=batch_size, device=device)
     

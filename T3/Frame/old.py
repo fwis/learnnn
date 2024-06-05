@@ -50,3 +50,18 @@
 # data_loader = DataLoader(custom_dataset, batch_size=batch_size, shuffle=True, num_workers=8, pin_memory=True)
 
 # train(model=model, dataloader=data_loader, device=device, num_epochs=num_epochs,lr=lr)
+
+
+
+        
+        # # Save best
+        # if val_loss < best_loss:
+        #     best_loss = val_loss
+        #     torch.save({
+        #         'epoch': epoch + 1,
+        #         'model_state_dict': model.state_dict(),
+        #         'optimizer_state_dict': optimizer.state_dict(),
+        #         'best_loss': best_loss,
+        #     }, checkpoint_path)
+        #     print(f'Best model saved with loss: {best_loss:.4f}')
+         

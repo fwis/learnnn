@@ -13,6 +13,7 @@ import warnings
 # Suppress specific warnings
 warnings.filterwarnings("ignore", category=UserWarning, message="Unsupported Windows version")
 
+
 def load_images(folder):
     images = {}
     for filename in os.listdir(folder):
@@ -73,7 +74,6 @@ def create_labels(root_folder):
     aop_tensor = torch.stack(aop_list, dim=0).unsqueeze(1)
         
     return dofp_tensor, s0_tensor, aop_tensor, dolp_tensor
-
 
 
 def merge_ptfiles(root_folder, output_file):

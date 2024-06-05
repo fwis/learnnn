@@ -13,7 +13,8 @@ warnings.filterwarnings("ignore", category=UserWarning, message="Unsupported Win
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-model = ResNet()  
+model = ResNet()
+# model = ForkNet()
 
 # Load checkpoint
 checkpoint_path = r'D:\VScodeProjects\learnnn\T3\Frame\ckpt\ResNet.pth'

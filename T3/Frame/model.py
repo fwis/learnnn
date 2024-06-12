@@ -278,7 +278,7 @@ class CustomLoss(nn.Module):
         # Total loss
         total_loss  = torch.mean(0.1 * abs(s0_true - s0_pred) + 
                       0.5 * abs(dolp_true - dolp_pred) + 
-                      0.03 * abs(aop_true - aop_pred)) +  0.8 * physics_loss - 0.002 * SSIM(aop_pred,aop_true, data_range= math.pi/2)
+                      0.05 * abs(aop_true - aop_pred)) +  0.8 * physics_loss - 0.01 * SSIM(aop_pred,aop_true, data_range= math.pi/2)
 
         return total_loss
     

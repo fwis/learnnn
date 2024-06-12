@@ -73,7 +73,7 @@ def train(model, train_loader, val_loader, device, num_epochs=10, learning_rate=
     
 if __name__ == "__main__":
     lr = 0.001
-    num_epochs = 5
+    num_epochs = 10
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     # model = ForkNet()
     # model = ResNet()
@@ -81,26 +81,26 @@ if __name__ == "__main__":
     batch_size = 48
     weight_decay = 1e-4
     
-    train_file_path = r"D:\WORKS\dataset\patches\100_train.h5"
-    train_file_path1 = r"D:\WORKS\dataset\patches\train_patches\OL_train.h5"
-    train_file_path2 = r"D:\WORKS\dataset\patches\train_patches\Fork_train.h5"
-    train_file_path3 = r"D:\WORKS\dataset\patches\train_patches\pid_train.h5"
-    train_file_path4 = r"D:\WORKS\dataset\patches\train_patches\PIF_train.h5"
-    test_file_path1 = r"D:\WORKS\dataset\patches\test_patches\OL_test.h5"
-    test_file_path2 = r"D:\WORKS\dataset\patches\test_patches\Fork_test.h5"
-    test_file_path3 = r"D:\WORKS\dataset\patches\test_patches\pid_test.h5"
-    test_file_path4 = r"D:\WORKS\dataset\patches\test_patches\PIF_test.h5"
+    train_file_path = r"D:\projects\patches\100_train.h5"
+    # train_file_path1 = r"D:\WORKS\dataset\patches\train_patches\OL_train.h5"
+    # train_file_path2 = r"D:\WORKS\dataset\patches\train_patches\Fork_train.h5"
+    # train_file_path3 = r"D:\WORKS\dataset\patches\train_patches\pid_train.h5"
+    # train_file_path4 = r"D:\WORKS\dataset\patches\train_patches\PIF_train.h5"
+    test_file_path1 = r"D:\projects\patches\test_patches\OL_test.h5"
+    # test_file_path2 = r"D:\WORKS\dataset\patches\test_patches\Fork_test.h5"
+    # test_file_path3 = r"D:\WORKS\dataset\patches\test_patches\pid_test.h5"
+    # test_file_path4 = r"D:\WORKS\dataset\patches\test_patches\PIF_test.h5"
     
     train_dataset = MyDataset(train_file_path, transform=custom_transform)
     # val_dataset = MyDataset(test_file_path)
-    train_dataset1 = MyDataset(file_path=train_file_path1, transform=custom_transform)
+    # train_dataset1 = MyDataset(file_path=train_file_path1, transform=custom_transform)
     val_dataset1 = MyDataset(file_path=test_file_path1, transform=None)
-    train_dataset2 = MyDataset(file_path=train_file_path2, transform=custom_transform)
-    val_dataset2 = MyDataset(file_path=test_file_path2, transform=None)
-    train_dataset3 = MyDataset(file_path=train_file_path3, transform=custom_transform)
-    val_dataset3 = MyDataset(file_path=test_file_path3, transform=None)
-    train_dataset4 = MyDataset(file_path=train_file_path4, transform=custom_transform)
-    val_dataset4 = MyDataset(file_path=test_file_path4, transform=None)
+    # train_dataset2 = MyDataset(file_path=train_file_path2, transform=custom_transform)
+    # val_dataset2 = MyDataset(file_path=test_file_path2, transform=None)
+    # train_dataset3 = MyDataset(file_path=train_file_path3, transform=custom_transform)
+    # val_dataset3 = MyDataset(file_path=test_file_path3, transform=None)
+    # train_dataset4 = MyDataset(file_path=train_file_path4, transform=custom_transform)
+    # val_dataset4 = MyDataset(file_path=test_file_path4, transform=None)
     
     train_dataset = train_dataset
     val_dataset = val_dataset1

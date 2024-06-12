@@ -1,31 +1,19 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.utils.data import DataLoader, Dataset, random_split
+from torch.utils.data import DataLoader, Dataset, random_split, ConcatDataset
 from torch.optim.lr_scheduler import ExponentialLR
-import numpy as np
 import os
-from model import MyDataset, ForkNet, ResNet, CustomLoss
-import warnings
+from model import MyDataset, ForkNet, ResNet, CustomLoss, UncertaintyWeightedLoss, custom_transform, ResNetFPN
 
-# Suppress specific warnings
-warnings.filterwarnings("ignore", category=UserWarning, message="Unsupported Windows version")
 
-def train(model, dataset, device, num_epochs=10, batch_size=32, learning_rate=0.001, train_ratio=0.8, checkpoint_path='ResNet.pth'):
-    # Split the training set and the test set
-    train_size = int(train_ratio * len(dataset))
-    val_size = len(dataset) - train_size
-    train_dataset, val_dataset = random_split(dataset, [train_size, val_size])
-    
-    # Create DataLoader
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
-    
+def train(model, train_loader, val_loader, device, num_epochs=10, learning_rate=0.001, weight_decay=1e-4, checkpoint_path='ResNet.pth'):
     # Model, criterion and optimizer
     model = model.to(device)
-    # criterion = nn.MSELoss().to(device)
     criterion = CustomLoss().to(device)
-    optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+    optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
+    # criterion = UncertaintyWeightedLoss().to(device)
+    # optimizer = optim.Adam(list(model.parameters()) + list(criterion.parameters()), lr=learning_rate)
     
     # Load model
     if os.path.exists(checkpoint_path):
@@ -51,10 +39,11 @@ def train(model, dataset, device, num_epochs=10, batch_size=32, learning_rate=0.
             optimizer.step()
             running_loss += loss.item()
             
-            if i % 10 == 9:
-                print(f'[Epoch {epoch + 1}, Batch {i + 1}] Train loss: {running_loss / 10:.3f}')
+            if i % 50 == 49:
+                print(f'[Epoch {epoch + 1}, Batch {i + 1}] Train loss: {running_loss / 50:.4f}')
                 running_loss = 0.0
-        
+        torch.cuda.empty_cache()
+
         # Validation
         model.eval()
         val_loss = 0.0
@@ -64,7 +53,6 @@ def train(model, dataset, device, num_epochs=10, batch_size=32, learning_rate=0.
                 aop_true = aop.to(device)
                 dolp_true = dolp.to(device)
                 s0_true = s0.to(device)
-                
                 aop_pred, dolp_pred, s0_pred = model(inputs)
                 
                 loss = criterion(s0_pred, s0_true, dolp_pred, dolp_true, aop_pred, aop_true)
@@ -72,26 +60,54 @@ def train(model, dataset, device, num_epochs=10, batch_size=32, learning_rate=0.
         
         val_loss /= len(val_loader)
         print(f'Epoch {epoch + 1}, Validation Loss: {val_loss:.4f}')
-
-        # Save checkpoint    
+        torch.cuda.empty_cache()
+        
+        # Save checkpoint
         torch.save({
             'model_state_dict': model.state_dict()
-        }, checkpoint_path)            
-    
+        }, checkpoint_path)
+        print('Checkpoint saved.')
+        torch.cuda.empty_cache()
     print('Finished Training')
     
     
 if __name__ == "__main__":
-    
     lr = 0.001
-    num_epochs = 1
+    num_epochs = 5
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     # model = ForkNet()
-    model = ResNet()
-    file_path = r"D:\WORKS\dataset\patch_data\data_ol.h5"
-    # file_path = r"D:\WORKS\dataset\patch_data\data_pif.h5"
-    batch_size = 16
-    custom_dataset = MyDataset(file_path)
+    # model = ResNet()
+    model = ResNetFPN()
+    batch_size = 48
+    weight_decay = 1e-4
     
-    train(model=model, dataset=custom_dataset, num_epochs=num_epochs, batch_size=batch_size, device=device)
+    train_file_path = r"D:\WORKS\dataset\patches\100_train.h5"
+    train_file_path1 = r"D:\WORKS\dataset\patches\train_patches\OL_train.h5"
+    train_file_path2 = r"D:\WORKS\dataset\patches\train_patches\Fork_train.h5"
+    train_file_path3 = r"D:\WORKS\dataset\patches\train_patches\pid_train.h5"
+    train_file_path4 = r"D:\WORKS\dataset\patches\train_patches\PIF_train.h5"
+    test_file_path1 = r"D:\WORKS\dataset\patches\test_patches\OL_test.h5"
+    test_file_path2 = r"D:\WORKS\dataset\patches\test_patches\Fork_test.h5"
+    test_file_path3 = r"D:\WORKS\dataset\patches\test_patches\pid_test.h5"
+    test_file_path4 = r"D:\WORKS\dataset\patches\test_patches\PIF_test.h5"
+    
+    train_dataset = MyDataset(train_file_path, transform=None)
+    # val_dataset = MyDataset(test_file_path)
+    train_dataset1 = MyDataset(file_path=train_file_path1, transform=custom_transform)
+    val_dataset1 = MyDataset(file_path=test_file_path1, transform=None)
+    train_dataset2 = MyDataset(file_path=train_file_path2, transform=custom_transform)
+    val_dataset2 = MyDataset(file_path=test_file_path2, transform=None)
+    train_dataset3 = MyDataset(file_path=train_file_path3, transform=custom_transform)
+    val_dataset3 = MyDataset(file_path=test_file_path3, transform=None)
+    train_dataset4 = MyDataset(file_path=train_file_path4, transform=custom_transform)
+    val_dataset4 = MyDataset(file_path=test_file_path4, transform=None)
+    
+    train_dataset = train_dataset
+    val_dataset = val_dataset1
+    
+    # Create DataLoader
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, num_workers=10, pin_memory=True, shuffle=True)
+    val_loader = DataLoader(val_dataset, batch_size=2, num_workers=10, pin_memory=True,  shuffle=False)
+    
+    train(model=model, train_loader=train_loader, val_loader=val_loader, num_epochs=num_epochs, learning_rate=lr, weight_decay=weight_decay, device=device)
     

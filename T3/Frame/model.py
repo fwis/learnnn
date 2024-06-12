@@ -137,7 +137,7 @@ class ResNet(nn.Module):
 class ResNetFPN(nn.Module):
     def __init__(self, num_blocks=[2, 2, 2, 2]):
         super(ResNetFPN, self).__init__()
-        self.conv1 = nn.Conv2d(1, 128, kernel_size=9, stride=1, padding=4, bias=False)
+        self.conv1 = nn.Conv2d(1, 128, kernel_size=5, stride=1, padding=2, bias=False)
         self.bn1 = nn.BatchNorm2d(128)
         self.relu = nn.ReLU(inplace=True)
         self.tanh = nn.Tanh()
@@ -146,10 +146,6 @@ class ResNetFPN(nn.Module):
         self.layer1 = nn.Sequential(*resnet_block(128, 128, num_blocks[0], first_block=True))
         self.layer2 = nn.Sequential(*resnet_block(128, 64, num_blocks[1]))
         self.layer3 = nn.Sequential(*resnet_block(64, 32, num_blocks[2]))
-        
-        # self.layer4_1 = nn.Sequential(*resnet_block(32, 1, num_blocks[3])) if num_blocks[3] > 0 else nn.Identity()
-        # self.layer4_2 = nn.Sequential(*resnet_block(32, 1, num_blocks[3])) if num_blocks[3] > 0 else nn.Identity()
-        # self.layer4_3 = nn.Sequential(*resnet_block(32, 1, num_blocks[3])) if num_blocks[3] > 0 else nn.Identity()
         
         # Lateral layers
         self.latlayer1 = nn.Conv2d(128, 32, kernel_size=1, stride=1, padding=0)

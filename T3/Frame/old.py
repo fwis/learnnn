@@ -65,3 +65,34 @@
         #     }, checkpoint_path)
         #     print(f'Best model saved with loss: {best_loss:.4f}')
          
+         
+         
+# def forward(self, s0_pred, s0_true, dolp_pred, dolp_true, aop_pred, aop_true):
+#         # Physics informed loss        
+#         Q_pred = dolp_pred * s0_pred * torch.cos(2 * aop_pred)
+#         U_pred = dolp_pred * s0_pred * torch.sin(2 * aop_pred)
+#         Q_true = dolp_true * s0_true * torch.cos(2 * aop_true)
+#         U_true = dolp_true * s0_true * torch.sin(2 * aop_true)
+
+#         loss_Q = torch.mean(Q_pred - Q_true)
+#         loss_U = torch.mean(U_pred - U_true)
+#         loss_dolp = torch.mean((dolp_pred - dolp_true))**2
+#         loss_s0 = torch.mean((s0_pred - s0_true))**2
+
+#         physics_loss = torch.abs(loss_s0 * loss_dolp - (loss_Q**2 + loss_U**2))
+
+#         # Total loss
+#         total_loss  = torch.mean(0.1 * torch.square(s0_true - s0_pred) + 
+#                         0.5 * torch.square(dolp_true - dolp_pred) + 
+#                         0.05 * torch.square(aop_true - aop_pred)) + 0.01 * physics_loss - 0.02 * torch.log(torch.relu(SSIM(aop_pred,aop_true)))
+                
+#         return total_loss
+
+
+
+    
+        # T1 = Q_true**2 + U_true**2
+        # T2 = nn.Sigmoid()(U_true/(Q_true + 1e-6))
+        # P1 = Q_pred**2 + U_pred**2
+        # P2 = nn.Sigmoid()(U_pred/(Q_pred + 1e-6))
+        # total_loss =  torch.mean(0.5 * ((T1 - P1)/2)**2 + 0.5* (T2 - P2)**2)

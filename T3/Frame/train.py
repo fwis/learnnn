@@ -91,7 +91,7 @@ if __name__ == "__main__":
     test_file_path3 = r"D:\WORKS\dataset\patches\test_patches\pid_test.h5"
     test_file_path4 = r"D:\WORKS\dataset\patches\test_patches\PIF_test.h5"
     
-    train_dataset = MyDataset(train_file_path, transform=None)
+    train_dataset = MyDataset(train_file_path, transform=custom_transform)
     # val_dataset = MyDataset(test_file_path)
     train_dataset1 = MyDataset(file_path=train_file_path1, transform=custom_transform)
     val_dataset1 = MyDataset(file_path=test_file_path1, transform=None)

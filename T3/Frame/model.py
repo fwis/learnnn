@@ -81,7 +81,7 @@ def resnet_block(input_channels, num_channels, num_residuals, first_block=False)
     return blk
 
 class ResNet(nn.Module):
-    def __init__(self, num_blocks=[2, 1, 1, 2]):
+    def __init__(self, num_blocks=[1, 2, 1, 2]):
         super(ResNet, self).__init__()
         self.conv1 = nn.Conv2d(1, 128, kernel_size=5, stride=1, padding=2, bias=False)
         self.bn1 = nn.BatchNorm2d(128)
@@ -97,14 +97,10 @@ class ResNet(nn.Module):
         self.layer4_2 = nn.Sequential(*resnet_block(32, 24, num_blocks[3])) if num_blocks[3] > 0 else nn.Identity()
         self.layer4_3 = nn.Sequential(*resnet_block(32, 24, num_blocks[3])) if num_blocks[3] > 0 else nn.Identity()
         
-        # Depthwise Separable Convolution
-        self.conv1_1 = nn.Conv2d(24,24,kernel_size=3,stride=1,padding=1,groups=24)
-        self.conv1_2 = nn.Conv2d(24,24,kernel_size=3,stride=1,padding=1,groups=24)
-        self.conv1_3 = nn.Conv2d(24,24,kernel_size=3,stride=1,padding=1,groups=24)
-        
-        self.conv2_1 = nn.Conv2d(24,1,kernel_size=1,stride=1)
-        self.conv2_2 = nn.Conv2d(24,1,kernel_size=1,stride=1)
-        self.conv2_3 = nn.Conv2d(24,1,kernel_size=1,stride=1)
+        # Output layer
+        self.conv1_1 = nn.Conv2d(24,1,kernel_size=3,stride=1,padding=1)
+        self.conv1_2 = nn.Conv2d(24,1,kernel_size=3,stride=1,padding=1)
+        self.conv1_3 = nn.Conv2d(24,1,kernel_size=3,stride=1,padding=1)
 
         self.dropout = nn.Dropout(0.2)
         
@@ -119,18 +115,12 @@ class ResNet(nn.Module):
 
         aop = self.layer4_1(x)
         aop = self.conv1_1(aop)
-        aop = self.relu(aop)
-        aop = self.conv2_1(aop)
         
         dolp = self.layer4_2(x)
         dolp = self.conv1_2(dolp)
-        dolp = self.relu(dolp)
-        dolp = self.conv2_2(dolp)
         
         s0 = self.layer4_3(x)
         s0 = self.conv1_3(s0)
-        s0 = self.relu(s0)
-        s0 = self.conv2_3(s0)
         
         return aop, dolp, s0
 

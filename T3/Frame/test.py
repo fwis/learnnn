@@ -8,7 +8,6 @@ from torchmetrics.functional import structural_similarity_index_measure as SSIM
 from torchmetrics.functional import peak_signal_noise_ratio as PSNR
 from torchmetrics.functional import mean_squared_error as MSE
 
-
 def test(model, dataloader, device='cuda'):
     # Set the model to evaluation mode
     model = model.to(device)
@@ -69,11 +68,11 @@ def test(model, dataloader, device='cuda'):
         print(f'PSNR of S0: {PSNR_s0}')
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-test_file_path = r"D:\projects\patches\test_patches\OL_test.h5"
+test_file_path = r'T3\Frame\data\patches\train_patches_100\Fork_train_100.h5'
 val_dataset = MyDataset(file_path=test_file_path, transform=None)
 val_loader = DataLoader(val_dataset, batch_size=2, num_workers=0, pin_memory=True,  shuffle=False)
-model = ResNetFPN()
-checkpoint_path = r'ResNet.pth'
+model = ForkNet()
+checkpoint_path = 'T3/Frame/ckpt/ForkNet.pth'
 checkpoint = torch.load(checkpoint_path)
 model.load_state_dict(checkpoint['model_state_dict'])
 model = model.to(device)

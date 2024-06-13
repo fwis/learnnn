@@ -4,16 +4,20 @@ import torch.optim as optim
 from torch.utils.data import DataLoader, Dataset, random_split, ConcatDataset
 from torch.optim.lr_scheduler import ExponentialLR
 import os
-from model import MyDataset, ForkNet, ResNet, CustomLoss, UncertaintyWeightedLoss, custom_transform, ResNetFPN
+from model import MyDataset, ForkNet, ResNet, CustomLoss, custom_transform, ResNetFPN
+from torch.utils.tensorboard import SummaryWriter
+import time
 
 
-def train(model, train_loader, val_loader, device, num_epochs=10, learning_rate=0.001, weight_decay=1e-4, checkpoint_path='ResNet.pth'):
+def train(model, train_loader, val_loader, device, num_epochs=10, learning_rate=0.001, weight_decay=1e-4, checkpoint_path='T3/Frame/ckpt/ForkNet.pth'):
     # Model, criterion and optimizer
     model = model.to(device)
     criterion = CustomLoss().to(device)
     optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
     # criterion = UncertaintyWeightedLoss().to(device)
     # optimizer = optim.Adam(list(model.parameters()) + list(criterion.parameters()), lr=learning_rate)
+    log_dir = "T3/Frame/logs/fit/" + time.strftime("%Y%m%d-%H%M%S")
+    writer = SummaryWriter(log_dir)
     
     # Load model
     if os.path.exists(checkpoint_path):
@@ -24,6 +28,8 @@ def train(model, train_loader, val_loader, device, num_epochs=10, learning_rate=
     for epoch in range(num_epochs):
         model.train()
         running_loss = 0.0
+        train_loss = 0.0
+        start_time = time.time()
         for i, (data, aop, dolp, s0) in enumerate(train_loader):
             inputs = data.to(device)
             aop_true = aop.to(device)
@@ -34,14 +40,21 @@ def train(model, train_loader, val_loader, device, num_epochs=10, learning_rate=
             
             aop_pred, dolp_pred, s0_pred = model(inputs)
             loss = criterion(s0_pred, s0_true, dolp_pred, dolp_true, aop_pred, aop_true)
-            
+
             loss.backward()
             optimizer.step()
             running_loss += loss.item()
+            train_loss += loss.item()
             
             if i % 50 == 49:
                 print(f'[Epoch {epoch + 1}, Batch {i + 1}] Train loss: {running_loss / 50:.4f}')
                 running_loss = 0.0
+                
+        # Calculate elapsed time and training loss
+        elapsed_time = time.time() - start_time
+        writer.add_scalar('Training Time', elapsed_time, epoch + 1)
+        avg_train_loss = train_loss / len(train_loader)
+        train_loss = 0.0
         torch.cuda.empty_cache()
 
         # Validation
@@ -60,6 +73,9 @@ def train(model, train_loader, val_loader, device, num_epochs=10, learning_rate=
         
         val_loss /= len(val_loader)
         print(f'Epoch {epoch + 1}, Validation Loss: {val_loss:.4f}')
+        writer.add_scalars('Loss', {'train loss': avg_train_loss, 
+                                        'validate loss':val_loss},global_step=epoch+1)
+        
         torch.cuda.empty_cache()
         
         # Save checkpoint
@@ -68,25 +84,26 @@ def train(model, train_loader, val_loader, device, num_epochs=10, learning_rate=
         }, checkpoint_path)
         print('Checkpoint saved.')
         torch.cuda.empty_cache()
+    writer.close()
     print('Finished Training')
     
     
 if __name__ == "__main__":
     lr = 0.001
-    num_epochs = 10
+    num_epochs = 20
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    # model = ForkNet()
+    model = ForkNet()
     # model = ResNet()
-    model = ResNetFPN()
-    batch_size = 48
+    # model = ResNetFPN()
+    batch_size = 128                    
     weight_decay = 1e-4
     
-    train_file_path = r"D:\projects\patches\100_train.h5"
+    train_file_path = r'T3\Frame\data\patches\train_patches_100\OL_train_100.h5'
     # train_file_path1 = r"D:\WORKS\dataset\patches\train_patches\OL_train.h5"
     # train_file_path2 = r"D:\WORKS\dataset\patches\train_patches\Fork_train.h5"
     # train_file_path3 = r"D:\WORKS\dataset\patches\train_patches\pid_train.h5"
     # train_file_path4 = r"D:\WORKS\dataset\patches\train_patches\PIF_train.h5"
-    test_file_path1 = r"D:\projects\patches\test_patches\OL_test.h5"
+    test_file_path1 = r'T3\Frame\data\patches\test_patches\OL_test.h5'
     # test_file_path2 = r"D:\WORKS\dataset\patches\test_patches\Fork_test.h5"
     # test_file_path3 = r"D:\WORKS\dataset\patches\test_patches\pid_test.h5"
     # test_file_path4 = r"D:\WORKS\dataset\patches\test_patches\PIF_test.h5"

@@ -96,3 +96,79 @@
         # P1 = Q_pred**2 + U_pred**2
         # P2 = nn.Sigmoid()(U_pred/(Q_pred + 1e-6))
         # total_loss =  torch.mean(0.5 * ((T1 - P1)/2)**2 + 0.5* (T2 - P2)**2)
+        
+
+    
+class UncertaintyWeightedLoss(nn.Module):
+    def __init__(self):
+        super(UncertaintyWeightedLoss, self).__init__()
+        # Initialize log-variance parameters for each loss component
+        self.log_vars = nn.Parameter(torch.zeros(5))
+
+    def forward(self, s0_pred, s0_true, dolp_pred, dolp_true, aop_pred, aop_true):
+        # Data-based loss
+        mse_loss_aop = nn.MSELoss()(aop_pred, aop_true)
+        mse_loss_dolp = nn.MSELoss()(dolp_pred, dolp_true)
+        mse_loss_s0 = nn.MSELoss()(s0_pred, s0_true)
+
+        # Physics-informed loss
+        Q_pred = dolp_pred * s0_pred * torch.cos(2 * aop_pred)
+        U_pred = dolp_pred * s0_pred * torch.sin(2 * aop_pred)
+        Q_true = dolp_true * s0_true * torch.cos(2 * aop_true)
+        U_true = dolp_true * s0_true * torch.sin(2 * aop_true)
+
+        ssim_loss_Q = 1 - SSIM(Q_pred, Q_true)
+        ssim_loss_U = 1 - SSIM(U_pred, U_true)
+        ssim_loss_Q = torch.relu(ssim_loss_Q)
+        ssim_loss_U = torch.relu(ssim_loss_U)
+        # loss_Q = nn.MSELoss()(Q_pred, Q_true)
+        # loss_U = nn.MSELoss()(U_pred, U_true)
+        
+        # Calculate the total loss using uncertainty weighting
+        loss_aop = mse_loss_aop * torch.exp(-self.log_vars[0]) + self.log_vars[0]
+        loss_dolp = mse_loss_dolp * torch.exp(-self.log_vars[1]) + self.log_vars[1]
+        loss_s0 = mse_loss_s0 * torch.exp(-self.log_vars[2]) + self.log_vars[2]
+        phys_loss_Q = ssim_loss_Q * torch.exp(-self.log_vars[3]) + self.log_vars[3]
+        phys_loss_U = ssim_loss_U * torch.exp(-self.log_vars[4]) + self.log_vars[4]
+        
+        loss_aop = torch.relu(loss_aop)
+        loss_dolp = torch.relu(loss_dolp)
+        loss_s0 = torch.relu(loss_s0)
+        phys_loss_Q = torch.relu(phys_loss_Q)
+        phys_loss_U = torch.relu(phys_loss_U)
+        regularization_loss = torch.sum(torch.abs(self.log_vars))
+        
+        total_loss = loss_aop + loss_dolp + loss_s0 + phys_loss_Q + phys_loss_U + 0.01 * regularization_loss
+
+        return total_loss
+    
+    
+class GradNormLoss(nn.Module):
+    def __init__(self, model, alpha=0.5):
+        super(GradNormLoss, self).__init__()
+        self.model = model
+        self.alpha = alpha
+        self.log_vars = nn.Parameter(torch.zeros(3))
+
+    def forward(self, s0_pred, s0_true, dolp_pred, dolp_true, aop_pred, aop_true):
+        mse_loss_aop = nn.MSELoss()(aop_pred, aop_true)
+        mse_loss_dolp = nn.MSELoss()(dolp_pred, dolp_true)
+        mse_loss_s0 = nn.MSELoss()(s0_pred, s0_true)
+
+        precision_aop = torch.exp(-self.log_vars[0])
+        precision_dolp = torch.exp(-self.log_vars[1])
+        precision_s0 = torch.exp(-self.log_vars[2])
+
+        loss_aop = mse_loss_aop * precision_aop + self.log_vars[0]
+        loss_dolp = mse_loss_dolp * precision_dolp + self.log_vars[1]
+        loss_s0 = mse_loss_s0 * precision_s0 + self.log_vars[2]
+
+        total_loss = loss_aop + loss_dolp + loss_s0
+
+        # GradNorm
+        grads = torch.autograd.grad(total_loss, self.model.parameters(), create_graph=True)
+        grads_norm = torch.stack([grad.norm() for grad in grads]).sum()
+
+        grad_norm_loss = (self.alpha / grads_norm) * total_loss
+
+        return grad_norm_loss

@@ -13,3 +13,5 @@ T3/Frame/data/patches/train_patches_100/OL_train_100.h5
 T3/Frame/data/patches/train_patches_100/PIF_train_100.h5
 T3/Frame/data/patches/train_patches_100/pim_train_100.h5
 T3/Frame/data/patches/train_patches_100/tokyo_train_100.h5
+T3/Frame/data/patches/test_patches_100/OL_test_100.h5
+T3/Frame/data/patches/train_patches_100/pid_train_100.h5

@@ -9,7 +9,7 @@ from torch.utils.tensorboard import SummaryWriter
 import time
 
 
-def train(model, train_loader, val_loader, device, num_epochs=10, learning_rate=0.001, weight_decay=1e-4, checkpoint_path='T3/Frame/ckpt/ResNet.pth'):
+def train(model, train_loader, val_loader, device, num_epochs=10, learning_rate=0.001, weight_decay=1e-4, checkpoint_path='T3/Frame/ckpt/ForkNet4.pth'):
     # Model, criterion and optimizer
     model = model.to(device)
     criterion = CustomLoss().to(device)
@@ -92,10 +92,10 @@ if __name__ == "__main__":
     lr = 0.001
     num_epochs = 300
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    # model = ForkNet()
-    model = ResNet()
+    model = ForkNet()
+    # model = ResNet()
     # model = ResNetFPN()
-    batch_size = 52                    
+    batch_size = 128                   
     weight_decay = 1e-4
     
     train_file_path = r'T3\Frame\data\patches\train_patches_100\OL_train_100.h5'
@@ -103,7 +103,7 @@ if __name__ == "__main__":
     # train_file_path2 = r"D:\WORKS\dataset\patches\train_patches\Fork_train.h5"
     # train_file_path3 = r"D:\WORKS\dataset\patches\train_patches\pid_train.h5"
     # train_file_path4 = r"D:\WORKS\dataset\patches\train_patches\PIF_train.h5"
-    test_file_path1 = r'T3\Frame\data\patches\test_patches\OL_test.h5'
+    test_file_path1 = r'T3\Frame\data\patches\test_patches_100\OL_test_100.h5'
     # test_file_path2 = r"D:\WORKS\dataset\patches\test_patches\Fork_test.h5"
     # test_file_path3 = r"D:\WORKS\dataset\patches\test_patches\pid_test.h5"
     # test_file_path4 = r"D:\WORKS\dataset\patches\test_patches\PIF_test.h5"

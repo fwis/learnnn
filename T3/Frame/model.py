@@ -86,7 +86,6 @@ class ResNet(nn.Module):
         self.conv1 = nn.Conv2d(1, 128, kernel_size=5, stride=1, padding=2, bias=False)
         self.bn1 = nn.BatchNorm2d(128)
         self.relu = nn.ReLU(inplace=True)
-        self.tanh =nn.Tanh()
         
         # Residual blocks
         self.layer1 = nn.Sequential(*resnet_block(128, 128, num_blocks[0], first_block=True))
@@ -101,8 +100,6 @@ class ResNet(nn.Module):
         self.conv1_1 = nn.Conv2d(24,1,kernel_size=3,stride=1,padding=1)
         self.conv1_2 = nn.Conv2d(24,1,kernel_size=3,stride=1,padding=1)
         self.conv1_3 = nn.Conv2d(24,1,kernel_size=3,stride=1,padding=1)
-
-        self.dropout = nn.Dropout(0.2)
         
     def forward(self, x):
         x = self.conv1(x)
@@ -111,7 +108,6 @@ class ResNet(nn.Module):
         x = self.layer1(x)
         x = self.layer2(x)
         x = self.layer3(x)
-        x = self.dropout(x)
 
         aop = self.layer4_1(x)
         aop = self.conv1_1(aop)
@@ -244,7 +240,6 @@ def custom_transform(data, aop, dolp, s0):
 
     return data, aop, dolp, s0
 
-
 '''
 Loss Functions
 '''
@@ -267,7 +262,7 @@ class CustomLoss(nn.Module):
 
         # Total loss
         total_loss  = torch.mean(0.1 * abs(s0_true - s0_pred) + 
-                      0.5 * abs(dolp_true - dolp_pred) + 
-                      0.05 * abs(aop_true - aop_pred)) +  0.8 * physics_loss - 0.01 * SSIM(aop_pred,aop_true, data_range= math.pi/2)
+                      0.6 * abs(dolp_true - dolp_pred) + 
+                      0.3 * abs(aop_true - aop_pred)) + 1.2 * physics_loss - 0.03 * SSIM(aop_pred,aop_true, data_range= math.pi/2)
 
         return total_loss

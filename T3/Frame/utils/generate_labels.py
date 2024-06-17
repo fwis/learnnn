@@ -1,14 +1,11 @@
-import matplotlib.pyplot as plt 
 import numpy as np
-from PIL import Image
-from utils import  dolp, aop, normalize, view_bar
+from utils import  dolp, aop
 import h5py
 import cv2
 import math
 import torch
 import torchvision.transforms.functional as F
 import os
-
 
 def load_images(folder):
     images = {}
@@ -57,6 +54,8 @@ def create_labels(root_folder):
                 img_dolp = dolp(images[0], images[45], images[90], images[135])
                 img_dolp[img_dolp > 1] = 1
                 img_s0 = 1/2 * (images[0] + images[45] + images[90] + images[135])
+                # normalize to range (0,1)
+                img_s0 = 0.5 * img_s0
                 # print(torch.max(img_dolp))
                 # print(dofp.shape)
                 dofp_list.append(dofp)
@@ -70,7 +69,6 @@ def create_labels(root_folder):
     aop_tensor = torch.stack(aop_list, dim=0).unsqueeze(1)
         
     return dofp_tensor, s0_tensor, aop_tensor, dolp_tensor
-
 
 
 def merge_ptfiles(root_folder, output_file):
@@ -120,35 +118,57 @@ def merge_ptfiles(root_folder, output_file):
     print(f'Merged data saved to {output_file}')
 
 
-def slice_and_save_to_h5(dofp_tensor, s0_tensor, aop_tensor, dolp_tensor, label_path, patch_size, stride):
+# Generate patches
+def slice_and_save_to_h5(dofp_tensor, s0_tensor, aop_tensor, dolp_tensor, label_path, patch_size, stride, slice=True):
     data_patches = []
     s0_patches = []
     aop_patches = []
     dolp_patches = []
     data_list = []
     labels_list = []
-    
-    for i in range(dofp_tensor.shape[0]):
-        dofp = dofp_tensor[i]
-        s0 = s0_tensor[i]
-        aop = aop_tensor[i]
-        dolp = dolp_tensor[i]
-        # print(dofp.shape)
-        for y in range(0, dofp.shape[1] - patch_size + 1, stride):
-            for x in range(0, dofp.shape[2] - patch_size + 1, stride):
-                data_patches.append(dofp[:, y:y+patch_size, x:x+patch_size])
-                s0_patches.append(s0[:, y:y+patch_size, x:x+patch_size])
-                aop_patches.append(aop[:, y:y+patch_size, x:x+patch_size])
-                dolp_patches.append(dolp[:, y:y+patch_size, x:x+patch_size])
+    if slice:
+        for i in range(dofp_tensor.shape[0]):
+            dofp = dofp_tensor[i]
+            s0 = s0_tensor[i]
+            aop = aop_tensor[i]
+            dolp = dolp_tensor[i]
+            # print(dofp.shape)
+            for y in range(0, dofp.shape[1] - patch_size + 1, stride):
+                for x in range(0, dofp.shape[2] - patch_size + 1, stride):
+                    data_patches.append(dofp[:, y:y+patch_size, x:x+patch_size])
+                    s0_patches.append(s0[:, y:y+patch_size, x:x+patch_size])
+                    aop_patches.append(aop[:, y:y+patch_size, x:x+patch_size])
+                    dolp_patches.append(dolp[:, y:y+patch_size, x:x+patch_size])
+            
+            # Process edge region
+            if y + patch_size < dofp.shape[1]:
+                data_patches.append(dofp[:, dofp.shape[1] - patch_size:, x:x+patch_size])
+                s0_patches.append(s0[:, dofp.shape[1] - patch_size:, x:x+patch_size])
+                aop_patches.append(aop[:, dofp.shape[1] - patch_size:, x:x+patch_size])
+                dolp_patches.append(dolp[:, dofp.shape[1] - patch_size:, x:x+patch_size])
 
-    data_patches = torch.stack(data_patches)
-    s0_patches = torch.stack(s0_patches)
-    aop_patches = torch.stack(aop_patches)
-    dolp_patches = torch.stack(dolp_patches)
+            if x + patch_size < dofp.shape[2]:
+                data_patches.append(dofp[:, y:y+patch_size, dofp.shape[2] - patch_size:])
+                s0_patches.append(s0[:, y:y+patch_size, dofp.shape[2] - patch_size:])
+                aop_patches.append(aop[:, y:y+patch_size, dofp.shape[2] - patch_size:])
+                dolp_patches.append(dolp[:, y:y+patch_size, dofp.shape[2] - patch_size:])
+        
+        data_patches = torch.stack(data_patches)
+        s0_patches = torch.stack(s0_patches)
+        aop_patches = torch.stack(aop_patches)
+        dolp_patches = torch.stack(dolp_patches)
+        
+        data_list.append(data_patches)
+        labels_list.append((aop_patches, dolp_patches, s0_patches))
     
-    data_list.append(data_patches)
-    labels_list.append((aop_patches, dolp_patches, s0_patches))
-    
+    else:
+        data_patches = dofp_tensor
+        s0_patches = s0_tensor
+        aop_patches = aop_tensor
+        dolp_patches = dolp_tensor
+        
+        data_list.append(data_patches)
+        labels_list.append((aop_patches, dolp_patches, s0_patches))
             
     with h5py.File(label_path, 'w') as hf:
         data_group = hf.create_group('data')
@@ -166,24 +186,10 @@ def slice_and_save_to_h5(dofp_tensor, s0_tensor, aop_tensor, dolp_tensor, label_
     print('Finished!')
             
             
-root_path = r'D:\WORKS\OL_DATA'
-label_path = r'D:\WORKS\data.h5'
+root_path = r'D:\WORKS\dataset\data_train\OL_DATA'
+label_path = r'D:\WORKS\dataset\patches\100_train.h5'
 dofp_tensor, s0_tensor, aop_tensor, dolp_tensor = create_labels(root_path)
-patch_size = 256
-stride = 224
-slice_and_save_to_h5(dofp_tensor, s0_tensor, aop_tensor, dolp_tensor, label_path, patch_size, stride)
-
-
- 
-# def generate_labels(dofp_tensor, s0_tensor, aop_tensor, dolp_tensor, label_path):
-#     labels = torch.cat([s0_tensor, dolp_tensor, aop_tensor], dim=1).cpu()
-#     Y = dofp_tensor.cpu()
-    
-#     with h5py.File(label_path, 'w') as f:
-#         f.create_dataset('labels', data=labels)
-#         f.create_dataset('data', data=Y)
-
-
-# generate_labels(dofp_tensor, s0_tensor, aop_tensor, dolp_tensor, label_path)
-# print(dofp_tensor.shape)
-
+patch_size = 100
+coincide = 20
+stride = patch_size - coincide
+slice_and_save_to_h5(dofp_tensor, s0_tensor, aop_tensor, dolp_tensor, label_path, patch_size, stride, slice=True)

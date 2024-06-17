@@ -9,7 +9,7 @@ from torch.utils.tensorboard import SummaryWriter
 import time
 
 
-def train(model, train_loader, val_loader, device, num_epochs=10, learning_rate=0.001, weight_decay=1e-4, checkpoint_path='T3/Frame/ckpt/ForkNet4.pth'):
+def train(model, train_loader, val_loader, device, num_epochs=10, learning_rate=0.001, weight_decay=1e-4, checkpoint_path='T3/Frame/ckpt/ResNet1    .pth'):
     # Model, criterion and optimizer
     model = model.to(device)
     criterion = CustomLoss().to(device)
@@ -92,10 +92,10 @@ if __name__ == "__main__":
     lr = 0.001
     num_epochs = 300
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    model = ForkNet()
-    # model = ResNet()
+    # model = ForkNet()
+    model = ResNet()
     # model = ResNetFPN()
-    batch_size = 128                   
+    batch_size = 52               
     weight_decay = 1e-4
     
     train_file_path = r'T3\Frame\data\patches\train_patches_100\OL_train_100.h5'

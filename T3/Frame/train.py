@@ -1,69 +1,130 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import DataLoader, Dataset, random_split, ConcatDataset
 from torch.optim.lr_scheduler import ExponentialLR
-import numpy as np
-import h5py
-import matplotlib.pyplot as plt
 import os
-import math
-import csv
-from model import MyDataset, ForkNet
+from model import MyDataset, ForkNet, ResNet, CustomLoss, custom_transform, ResNetFPN
+from torch.utils.tensorboard import SummaryWriter
+import time
 
 
-lr = 0.001
-num_epochs = 1
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-print(f'Using device:{device}')
-
-file_path = r"D:\WORKS\data.h5"
-batch_size = 64
-
-
-def train(amodel, dataloader, adevice, num_epochs):
-    model = amodel.to(adevice)
-    criterion = nn.MSELoss()
-    optimizer = optim.Adam(model.parameters(), lr=0.001)
+def train(model, train_loader, val_loader, device, num_epochs=10, learning_rate=0.001, weight_decay=1e-4, checkpoint_path='T3/Frame/ckpt/ForkNet4.pth'):
+    # Model, criterion and optimizer
+    model = model.to(device)
+    criterion = CustomLoss().to(device)
+    optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
+    # criterion = UncertaintyWeightedLoss().to(device)
+    # optimizer = optim.Adam(list(model.parameters()) + list(criterion.parameters()), lr=learning_rate)
+    log_dir = "T3/Frame/logs/fit/" + time.strftime("%Y%m%d-%H%M%S")
+    writer = SummaryWriter(log_dir)
     
+    # Load model
+    if os.path.exists(checkpoint_path):
+        checkpoint = torch.load(checkpoint_path)
+        model.load_state_dict(checkpoint['model_state_dict'])
+        print(f'Loaded checkpoint.')
+        
     for epoch in range(num_epochs):
+        model.train()
         running_loss = 0.0
-        for i, (data,aop,dolp,s0) in enumerate(dataloader, 0):
-
-            inputs = data.to(adevice)
-            aop_labels = aop.to(adevice)
-            dolp_labels = dolp.to(adevice)
-            s0_labels = s0.to(adevice)
-            # print(inputs.shape)
+        train_loss = 0.0
+        start_time = time.time()
+        for i, (data, aop, dolp, s0) in enumerate(train_loader):
+            inputs = data.to(device)
+            aop_true = aop.to(device)
+            dolp_true = dolp.to(device)
+            s0_true = s0.to(device)
+            
             optimizer.zero_grad()
-
-            aop_preds, dolp_preds, s0_preds = model(inputs)
-
-            loss_aop = criterion(aop_preds, aop_labels)
-            loss_dolp = criterion(dolp_preds, dolp_labels)
-            loss_s0 = criterion(s0_preds, s0_labels)
-            loss = loss_aop + loss_dolp + loss_s0
+            
+            aop_pred, dolp_pred, s0_pred = model(inputs)
+            loss = criterion(s0_pred, s0_true, dolp_pred, dolp_true, aop_pred, aop_true)
 
             loss.backward()
             optimizer.step()
-
             running_loss += loss.item()
-            if i % 10 == 9:    # 每 10 个 mini-batches 打印一次
-                print('[%d, %5d] loss: %.3f' %
-                      (epoch + 1, i + 1, running_loss / 10))
+            train_loss += loss.item()
+            
+            if i % 50 == 49:
+                print(f'[Epoch {epoch + 1}, Batch {i + 1}] Train loss: {running_loss / 50:.4f}')
                 running_loss = 0.0
-                print(f'inputs device: {inputs.device}')
-                print(f'aop_preds device: {aop_preds.device}')
-                print(f'loss device: {loss.device}')
-                print(f'model device: {next(model.parameters()).device}')
-        torch.cuda.synchronize()       
-    print('Finished Training!')
+                
+        # Calculate elapsed time and training loss
+        elapsed_time = time.time() - start_time
+        writer.add_scalar('Training Time', elapsed_time, epoch + 1)
+        avg_train_loss = train_loss / len(train_loader)
+        train_loss = 0.0
+        torch.cuda.empty_cache()
 
-
+        # Validation
+        model.eval()
+        val_loss = 0.0
+        with torch.no_grad():
+            for data, aop, dolp, s0 in val_loader:
+                inputs = data.to(device)
+                aop_true = aop.to(device)
+                dolp_true = dolp.to(device)
+                s0_true = s0.to(device)
+                aop_pred, dolp_pred, s0_pred = model(inputs)
+                
+                loss = criterion(s0_pred, s0_true, dolp_pred, dolp_true, aop_pred, aop_true)
+                val_loss += loss.item()
+        
+        val_loss /= len(val_loader)
+        print(f'Epoch {epoch + 1}, Validation Loss: {val_loss:.4f}')
+        writer.add_scalars('Loss', {'train loss': avg_train_loss, 
+                                        'validate loss':val_loss},global_step=epoch+1)
+        
+        torch.cuda.empty_cache()
+        
+        # Save checkpoint
+        torch.save({
+            'model_state_dict': model.state_dict()
+        }, checkpoint_path)
+        print('Checkpoint saved.')
+        torch.cuda.empty_cache()
+    writer.close()
+    print('Finished Training')
+    
+    
 if __name__ == "__main__":
+    lr = 0.001
+    num_epochs = 300
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model = ForkNet()
-    custom_dataset = MyDataset(file_path)
-
-    data_loader = DataLoader(custom_dataset, batch_size=batch_size, shuffle=True, num_workers=8, pin_memory=True)
-
-    train(model, data_loader, adevice=device, num_epochs=num_epochs)
+    # model = ResNet()
+    # model = ResNetFPN()
+    batch_size = 128                   
+    weight_decay = 1e-4
+    
+    train_file_path = r'T3\Frame\data\patches\train_patches_100\OL_train_100.h5'
+    # train_file_path1 = r"D:\WORKS\dataset\patches\train_patches\OL_train.h5"
+    # train_file_path2 = r"D:\WORKS\dataset\patches\train_patches\Fork_train.h5"
+    # train_file_path3 = r"D:\WORKS\dataset\patches\train_patches\pid_train.h5"
+    # train_file_path4 = r"D:\WORKS\dataset\patches\train_patches\PIF_train.h5"
+    test_file_path1 = r'T3\Frame\data\patches\test_patches_100\OL_test_100.h5'
+    # test_file_path2 = r"D:\WORKS\dataset\patches\test_patches\Fork_test.h5"
+    # test_file_path3 = r"D:\WORKS\dataset\patches\test_patches\pid_test.h5"
+    # test_file_path4 = r"D:\WORKS\dataset\patches\test_patches\PIF_test.h5"
+    
+    train_dataset = MyDataset(train_file_path, transform=custom_transform)
+    # val_dataset = MyDataset(test_file_path)
+    # train_dataset1 = MyDataset(file_path=train_file_path1, transform=custom_transform)
+    val_dataset1 = MyDataset(file_path=test_file_path1, transform=None)
+    # train_dataset2 = MyDataset(file_path=train_file_path2, transform=custom_transform)
+    # val_dataset2 = MyDataset(file_path=test_file_path2, transform=None)
+    # train_dataset3 = MyDataset(file_path=train_file_path3, transform=custom_transform)
+    # val_dataset3 = MyDataset(file_path=test_file_path3, transform=None)
+    # train_dataset4 = MyDataset(file_path=train_file_path4, transform=custom_transform)
+    # val_dataset4 = MyDataset(file_path=test_file_path4, transform=None)
+    
+    train_dataset = train_dataset
+    val_dataset = val_dataset1
+    
+    # Create DataLoader
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, num_workers=10, pin_memory=True, shuffle=True)
+    val_loader = DataLoader(val_dataset, batch_size=2, num_workers=10, pin_memory=True,  shuffle=False)
+    
+    train(model=model, train_loader=train_loader, val_loader=val_loader, num_epochs=num_epochs, learning_rate=lr, weight_decay=weight_decay, device=device)
+    

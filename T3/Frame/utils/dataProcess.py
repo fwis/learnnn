@@ -497,7 +497,40 @@ def rename_tokyo(root_folder):
                     print(f"已将文件 {filename} 重命名为 {new_filename}")
                     
                     
-root_dir = r'D:\WORKS\OL_DATA'
+def remove_labes(root_dir):
+    for foldername, subfolders, filenames in os.walk(root_dir, topdown=False):
+        for subfolder in subfolders:
+            if subfolder == 'data' or subfolder == 'labels':
+                subfolder_path = os.path.join(foldername, subfolder)
+                for root, dirs, files in os.walk(subfolder_path, topdown=False):
+                    for file in files:
+                        os.remove(os.path.join(root, file))
+                os.rmdir(subfolder_path)
+                
+def sort_folders(root_dir, target_dir):
+    sub_folders = [f.path for f in os.scandir(root_dir) if f.is_dir()]
+    sub_folders.sort()
+    
+    for index, folder in enumerate(sub_folders, start=1):
+        folder_name = os.path.basename(folder)
+        new_folder_name = str(index)
+        new_folder_path = os.path.join(target_dir, new_folder_name)
+        
+        # 创建新的目标文件夹
+        os.makedirs(new_folder_path, exist_ok=True)
+        
+        # 移动文件到新文件夹
+        files = [f for f in os.listdir(folder) if os.path.isfile(os.path.join(folder, f))]
+        for file in files:
+            shutil.move(os.path.join(folder, file), os.path.join(new_folder_path, file))
+        
+    print("文件夹排序完成！")
+
+# 使用示例
+sort_folders(r"D:\WORKS\dataset\data_test\tokyo_test", r"D:\WORKS\dataset\data_test\sort")
+
+                
+# root_dir = r'D:\WORKS\dataset\sorted_images'
 # output_file = r'D:\WORKS\Polarization\Machine_Learning\Tokyo_dataset\data.h5'
 # rename_fork(root_dir)
 # rename_img(root_dir)
@@ -505,8 +538,8 @@ root_dir = r'D:\WORKS\OL_DATA'
 # create_labels(root_dir)
 # createDofp(root_dir)
 # merge_ptfiles(root_dir, output_file)
-rename_OL(root_dir)
-
+# rename_OL(root_dir)
+# remove_labes(root_dir)
 
 # source_parent_folder = r'C:\Users\lhr\Desktop\OL_DATA'
 # move_files_to_parent(source_parent_folder)
@@ -514,7 +547,7 @@ rename_OL(root_dir)
 # source_parent_folder = r'C:\Users\lhr\Desktop\OL_DATA'
 # 获取最低一级子文件夹
 
-# base_folder = r"F:\新建文件夹\training_set"
+# base_folder = r"D:\WORKS\Polarization\test_set"
 # organize_images_by_identifier(base_folder)
 
 # folders = [r'C:\Users\lhr\Desktop\PIF_dataset\0', r'C:\Users\lhr\Desktop\PIF_dataset\45', r'C:\Users\lhr\Desktop\PIF_dataset\90', r'C:\Users\lhr\Desktop\PIF_dataset\135']

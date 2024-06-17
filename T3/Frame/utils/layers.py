@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
-# 卷积层
+# Convolution layer
 class Conv2D(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size, stride=1, padding=0, use_bias=True, activation=F.relu):
         super(Conv2D, self).__init__()
@@ -31,7 +31,7 @@ class Conv2D_BN(nn.Module):
         return x
 
 
-# 残差块
+# Residual block
 class Residual(nn.Module):
     def __init__(self, input_channels, num_channels,
                  use_1x1conv=False, strides=1):

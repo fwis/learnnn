@@ -81,7 +81,7 @@ def resnet_block(input_channels, num_channels, num_residuals, first_block=False)
     return blk
 
 class ResNet(nn.Module):
-    def __init__(self, num_blocks=[1, 2, 1, 2]):
+    def __init__(self, num_blocks=[1, 1, 1, 2]):
         super(ResNet, self).__init__()
         self.conv1 = nn.Conv2d(1, 128, kernel_size=5, stride=1, padding=2, bias=False)
         self.bn1 = nn.BatchNorm2d(128)
@@ -100,6 +100,8 @@ class ResNet(nn.Module):
         self.conv1_1 = nn.Conv2d(24,1,kernel_size=3,stride=1,padding=1)
         self.conv1_2 = nn.Conv2d(24,1,kernel_size=3,stride=1,padding=1)
         self.conv1_3 = nn.Conv2d(24,1,kernel_size=3,stride=1,padding=1)
+        
+        # self.dropout = nn.Dropout(0.2)
         
     def forward(self, x):
         x = self.conv1(x)
@@ -254,15 +256,13 @@ class CustomLoss(nn.Module):
         U_pred = dolp_pred * s0_pred * torch.sin(2 * aop_pred)
         Q_true = dolp_true * s0_true * torch.cos(2 * aop_true)
         U_true = dolp_true * s0_true * torch.sin(2 * aop_true)        
-        loss_Q = torch.mean(Q_pred - Q_true)**2
-        loss_U = torch.mean(U_pred - U_true)**2
-        loss_dolp = torch.mean((dolp_pred - dolp_true)**2)
-        loss_s0 = torch.mean((s0_pred - s0_true)**2)
-        physics_loss = torch.abs(loss_s0 * loss_dolp - (loss_Q + loss_U))
-
+        loss_Q = torch.mean(abs(Q_pred - Q_true))
+        loss_U = torch.mean(abs(U_pred - U_true))
+        physics_loss = loss_Q + loss_U
+    
         # Total loss
         total_loss  = torch.mean(0.1 * abs(s0_true - s0_pred) + 
                       0.6 * abs(dolp_true - dolp_pred) + 
-                      0.3 * abs(aop_true - aop_pred)) + 1.2 * physics_loss - 0.03 * SSIM(aop_pred,aop_true, data_range= math.pi/2)
+                      0.3 * abs(aop_true - aop_pred)) - 0.03 * SSIM(aop_pred,aop_true, data_range= math.pi/2) + physics_loss
 
         return total_loss

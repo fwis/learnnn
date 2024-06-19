@@ -9,7 +9,7 @@ from torch.utils.tensorboard import SummaryWriter
 import time
 
 
-def train(model, train_loader, val_loader, device, num_epochs=10, learning_rate=0.001, weight_decay=1e-4, checkpoint_path='T3/Frame/ckpt/ResNet1    .pth'):
+def train(model, train_loader, val_loader, device, num_epochs=10, learning_rate=0.001, weight_decay=1e-4, checkpoint_path='T3/Frame/ckpt/ResNet3.pth'):
     # Model, criterion and optimizer
     model = model.to(device)
     criterion = CustomLoss().to(device)
@@ -95,7 +95,7 @@ if __name__ == "__main__":
     # model = ForkNet()
     model = ResNet()
     # model = ResNetFPN()
-    batch_size = 52               
+    batch_size = 42
     weight_decay = 1e-4
     
     train_file_path = r'T3\Frame\data\patches\train_patches_100\OL_train_100.h5'

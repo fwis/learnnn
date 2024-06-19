@@ -83,25 +83,29 @@ def resnet_block(input_channels, num_channels, num_residuals, first_block=False)
 class ResNet(nn.Module):
     def __init__(self, num_blocks=[1, 1, 1, 2]):
         super(ResNet, self).__init__()
-        self.conv1 = nn.Conv2d(1, 128, kernel_size=5, stride=1, padding=2, bias=False)
-        self.bn1 = nn.BatchNorm2d(128)
+        self.conv1 = nn.Conv2d(1, 64, kernel_size=5, stride=1, padding=2, bias=False)
+        self.bn1 = nn.BatchNorm2d(64)
         self.relu = nn.ReLU(inplace=True)
         
         # Residual blocks
-        self.layer1 = nn.Sequential(*resnet_block(128, 128, num_blocks[0], first_block=True))
-        self.layer2 = nn.Sequential(*resnet_block(128, 64, num_blocks[1]))
-        self.layer3 = nn.Sequential(*resnet_block(64, 32, num_blocks[2]))
+        self.layer1 = nn.Sequential(*resnet_block(64, 64, num_blocks[0], first_block=True))
+        self.layer2 = nn.Sequential(*resnet_block(64, 256, num_blocks[1]))
+        # self.layer3 = nn.Sequential(*resnet_block(64, 32, num_blocks[2]))
         
-        self.layer4_1 = nn.Sequential(*resnet_block(32, 24, num_blocks[3])) if num_blocks[3] > 0 else nn.Identity()
-        self.layer4_2 = nn.Sequential(*resnet_block(32, 24, num_blocks[3])) if num_blocks[3] > 0 else nn.Identity()
-        self.layer4_3 = nn.Sequential(*resnet_block(32, 24, num_blocks[3])) if num_blocks[3] > 0 else nn.Identity()
+        self.layer4_1 = nn.Sequential(*resnet_block(256, 32, num_blocks[3])) if num_blocks[3] > 0 else nn.Identity()
+        self.layer4_2 = nn.Sequential(*resnet_block(256, 32, num_blocks[3])) if num_blocks[3] > 0 else nn.Identity()
+        self.layer4_3 = nn.Sequential(*resnet_block(256, 32, num_blocks[3])) if num_blocks[3] > 0 else nn.Identity()
         
         # Output layer
-        self.conv1_1 = nn.Conv2d(24,1,kernel_size=3,stride=1,padding=1)
-        self.conv1_2 = nn.Conv2d(24,1,kernel_size=3,stride=1,padding=1)
-        self.conv1_3 = nn.Conv2d(24,1,kernel_size=3,stride=1,padding=1)
+        # Depthwise separabel convolution
+        self.conv1_1 = nn.Conv2d(32,32,kernel_size=3,stride=1,padding=1,groups=32)
+        self.conv1_2 = nn.Conv2d(32,32,kernel_size=3,stride=1,padding=1,groups=32)
+        self.conv1_3 = nn.Conv2d(32,32,kernel_size=3,stride=1,padding=1,groups=32)
+        self.conv2_1 = nn.Conv2d(32,1,kernel_size=1,stride=1,padding=0)
+        self.conv2_2 = nn.Conv2d(32,1,kernel_size=1,stride=1,padding=0)
+        self.conv2_3 = nn.Conv2d(32,1,kernel_size=1,stride=1,padding=0)
         
-        # self.dropout = nn.Dropout(0.2)
+        self.dropout = nn.Dropout(0.2)
         
     def forward(self, x):
         x = self.conv1(x)
@@ -109,16 +113,22 @@ class ResNet(nn.Module):
         x = self.relu(x)
         x = self.layer1(x)
         x = self.layer2(x)
-        x = self.layer3(x)
+        # x = self.layer3(x)
 
         aop = self.layer4_1(x)
+        aop = self.dropout(aop)
         aop = self.conv1_1(aop)
+        aop = self.conv2_1(aop)
         
         dolp = self.layer4_2(x)
+        dolp = self.dropout(dolp)
         dolp = self.conv1_2(dolp)
+        dolp = self.conv2_2(dolp)
         
         s0 = self.layer4_3(x)
+        s0 = self.dropout(s0)
         s0 = self.conv1_3(s0)
+        s0 = self.conv2_3(s0)
         
         return aop, dolp, s0
 

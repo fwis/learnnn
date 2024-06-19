@@ -7,6 +7,7 @@ import os
 from model import MyDataset, ForkNet, ResNet, CustomLoss, custom_transform, ResNetFPN
 from torch.utils.tensorboard import SummaryWriter
 import time
+from torch.cuda.amp import GradScaler, autocast
 
 
 def train(model, train_loader, val_loader, device, num_epochs=10, learning_rate=0.001, weight_decay=1e-4, checkpoint_path='T3/Frame/ckpt/ResNet3.pth'):
@@ -14,6 +15,7 @@ def train(model, train_loader, val_loader, device, num_epochs=10, learning_rate=
     model = model.to(device)
     criterion = CustomLoss().to(device)
     optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
+    scaler = GradScaler()  # Initialize gradient scaler for mixed precision training
     # criterion = UncertaintyWeightedLoss().to(device)
     # optimizer = optim.Adam(list(model.parameters()) + list(criterion.parameters()), lr=learning_rate)
     log_dir = "T3/Frame/logs/fit/" + time.strftime("%Y%m%d-%H%M%S")
@@ -38,11 +40,14 @@ def train(model, train_loader, val_loader, device, num_epochs=10, learning_rate=
             
             optimizer.zero_grad()
             
-            aop_pred, dolp_pred, s0_pred = model(inputs)
-            loss = criterion(s0_pred, s0_true, dolp_pred, dolp_true, aop_pred, aop_true)
+            with autocast():  # Enable autocast for mixed precision training
+                aop_pred, dolp_pred, s0_pred = model(inputs)
+                loss = criterion(s0_pred, s0_true, dolp_pred, dolp_true, aop_pred, aop_true)
 
-            loss.backward()
-            optimizer.step()
+            scaler.scale(loss).backward()  # Scale loss for mixed precision
+            scaler.step(optimizer)  # Step the optimizer
+            scaler.update()  # Update the scale for next iteration
+            
             running_loss += loss.item()
             train_loss += loss.item()
             
@@ -95,7 +100,7 @@ if __name__ == "__main__":
     # model = ForkNet()
     model = ResNet()
     # model = ResNetFPN()
-    batch_size = 42
+    batch_size = 88
     weight_decay = 1e-4
     
     train_file_path = r'T3\Frame\data\patches\train_patches_100\OL_train_100.h5'
@@ -124,7 +129,7 @@ if __name__ == "__main__":
     
     # Create DataLoader
     train_loader = DataLoader(train_dataset, batch_size=batch_size, num_workers=10, pin_memory=True, shuffle=True)
-    val_loader = DataLoader(val_dataset, batch_size=2, num_workers=10, pin_memory=True,  shuffle=False)
+    val_loader = DataLoader(val_dataset, batch_size=64, num_workers=10, pin_memory=True,  shuffle=False)
     
     train(model=model, train_loader=train_loader, val_loader=val_loader, num_epochs=num_epochs, learning_rate=lr, weight_decay=weight_decay, device=device)
     

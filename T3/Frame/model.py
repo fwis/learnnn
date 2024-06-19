@@ -105,7 +105,7 @@ class ResNet(nn.Module):
         self.conv2_2 = nn.Conv2d(32,1,kernel_size=1,stride=1,padding=0)
         self.conv2_3 = nn.Conv2d(32,1,kernel_size=1,stride=1,padding=0)
         
-        self.dropout = nn.Dropout(0.2)
+        # self.dropout = nn.Dropout(0.5)
         
     def forward(self, x):
         x = self.conv1(x)
@@ -116,17 +116,17 @@ class ResNet(nn.Module):
         # x = self.layer3(x)
 
         aop = self.layer4_1(x)
-        aop = self.dropout(aop)
+        # aop = self.dropout(aop)
         aop = self.conv1_1(aop)
         aop = self.conv2_1(aop)
         
         dolp = self.layer4_2(x)
-        dolp = self.dropout(dolp)
+        # dolp = self.dropout(dolp)
         dolp = self.conv1_2(dolp)
         dolp = self.conv2_2(dolp)
         
         s0 = self.layer4_3(x)
-        s0 = self.dropout(s0)
+        # s0 = self.dropout(s0)
         s0 = self.conv1_3(s0)
         s0 = self.conv2_3(s0)
         
@@ -244,7 +244,7 @@ def custom_transform(data, aop, dolp, s0):
         s0 = TF.vflip(s0)
 
     # Random 0, 90, 180, 270 degree rotation
-    angle = random.choice([0, 90, 180, 270, 0])
+    angle = random.choice([0, 90, 180, 270])
     data = TF.rotate(data, angle)
     aop = TF.rotate(aop, angle)
     dolp = TF.rotate(dolp, angle)

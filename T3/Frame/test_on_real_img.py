@@ -3,7 +3,7 @@ import torch.nn as nn
 from torch.optim.lr_scheduler import ExponentialLR
 import numpy as np
 import matplotlib.pyplot as plt
-from model import MyDataset, ForkNet, ResNet, UncertaintyWeightedLoss, ResNetFPN
+from model import MyDataset, ForkNet, ResNet, ResNetFPN
 import warnings
 from torchmetrics.functional import structural_similarity_index_measure as SSIM
 from torchmetrics.functional import peak_signal_noise_ratio as PSNR
@@ -12,13 +12,13 @@ from torchmetrics.functional import peak_signal_noise_ratio as PSNR
 warnings.filterwarnings("ignore", category=UserWarning, message="Unsupported Windows version")
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-# model = ResNet()
-criterion = UncertaintyWeightedLoss()
+model = ResNet()
+# criterion = UncertaintyWeightedLoss()
 # model = ForkNet()
-model = ResNetFPN()
+# model = ResNetFPN()
 
 # Load checkpoint
-checkpoint_path = r'ResNet.pth'
+checkpoint_path = 'T3\Frame\ckpt\ResNet3.pth'
 checkpoint = torch.load(checkpoint_path)
 model.load_state_dict(checkpoint['model_state_dict'])
 model = model.to(device)

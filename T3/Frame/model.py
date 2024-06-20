@@ -89,12 +89,12 @@ class ResNet(nn.Module):
         
         # Residual blocks
         self.layer1 = nn.Sequential(*resnet_block(64, 64, num_blocks[0], first_block=True))
-        self.layer2 = nn.Sequential(*resnet_block(64, 256, num_blocks[1]))
+        self.layer2 = nn.Sequential(*resnet_block(64, 128, num_blocks[1]))
         # self.layer3 = nn.Sequential(*resnet_block(64, 32, num_blocks[2]))
         
-        self.layer4_1 = nn.Sequential(*resnet_block(256, 32, num_blocks[3])) if num_blocks[3] > 0 else nn.Identity()
-        self.layer4_2 = nn.Sequential(*resnet_block(256, 32, num_blocks[3])) if num_blocks[3] > 0 else nn.Identity()
-        self.layer4_3 = nn.Sequential(*resnet_block(256, 32, num_blocks[3])) if num_blocks[3] > 0 else nn.Identity()
+        self.layer4_1 = nn.Sequential(*resnet_block(128, 32, num_blocks[3])) if num_blocks[3] > 0 else nn.Identity()
+        self.layer4_2 = nn.Sequential(*resnet_block(128, 32, num_blocks[3])) if num_blocks[3] > 0 else nn.Identity()
+        self.layer4_3 = nn.Sequential(*resnet_block(128, 32, num_blocks[3])) if num_blocks[3] > 0 else nn.Identity()
         
         # Output layer
         # Depthwise separabel convolution

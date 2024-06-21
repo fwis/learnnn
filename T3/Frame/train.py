@@ -10,14 +10,12 @@ import time
 from torch.cuda.amp import GradScaler, autocast
 
 
-def train(model, train_loader, val_loader, device, num_epochs=10, learning_rate=0.001, weight_decay=1e-4, checkpoint_path='T3/Frame/ckpt/ResNet5.pth'):
+def train(model, train_loader, val_loader, device, num_epochs=10, learning_rate=0.001, weight_decay=1e-4, checkpoint_path='T3/Frame/ckpt/ResNet6.pth', savebest=True):
     # Model, criterion and optimizer
     model = model.to(device)
     criterion = CustomLoss().to(device)
     optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
     scaler = GradScaler()  # Initialize gradient scaler for mixed precision training
-    # criterion = UncertaintyWeightedLoss().to(device)
-    # optimizer = optim.Adam(list(model.parameters()) + list(criterion.parameters()), lr=learning_rate)
     log_dir = "T3/Frame/logs/fit/" + time.strftime("%Y%m%d-%H%M%S")
     writer = SummaryWriter(log_dir)
     
@@ -89,12 +87,25 @@ def train(model, train_loader, val_loader, device, num_epochs=10, learning_rate=
         }, checkpoint_path)
         print('Checkpoint saved.')
         torch.cuda.empty_cache()
+        
+        # Save best
+        if savebest:
+            if val_loss < best_val_loss:
+                best_val_loss = val_loss
+                best_epoch = epoch + 1
+                best_checkpoint_path = checkpoint_path.replace('.pth', '_best.pth')
+                torch.save({
+                    'model_state_dict': model.state_dict(),
+                    'epoch': best_epoch,
+                    'val_loss': val_loss,
+                }, best_checkpoint_path)
+            
     writer.close()
     print('Finished Training')
     
     
 if __name__ == "__main__":
-    lr = 0.001
+    lr = 0.0008
     num_epochs = 300
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     # model = ForkNet()
@@ -111,10 +122,10 @@ if __name__ == "__main__":
     train_file_path5 = r"T3\Frame\data\patches\train_patches_100\tokyo_train_100.h5"
     
     test_file_path1 = r'T3\Frame\data\patches\test_patches_100\OL_test_100.h5'
-    test_file_path2 = r"D:\WORKS\dataset\patches\test_patches_100\Fork_test_100.h5"
-    test_file_path3 = r"D:\WORKS\dataset\patches\test_patches_100\pid_test_100.h5"
-    test_file_path4 = r"D:\WORKS\dataset\patches\test_patches_100\PIF_test_100.h5"
-    test_file_path5 = r"D:\WORKS\dataset\patches\test_patches_100\tokyo_test_100.h5"
+    test_file_path2 = r"T3\Frame\data\patches\test_patches_100\Fork_test_100.h5"
+    test_file_path3 = r"T3\Frame\data\patches\test_patches_100\pid_test_100.h5"
+    test_file_path4 = r"T3\Frame\data\patches\test_patches_100\PIF_test_100.h5"
+    test_file_path5 = r"T3\Frame\data\patches\test_patches_100\tokyo_test_100.h5"
     
     # train_dataset = MyDataset(train_file_path, transform=custom_transform)
     # val_dataset = MyDataset(test_file_path)

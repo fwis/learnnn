@@ -72,7 +72,7 @@ test_file_path = r'T3\Frame\data\patches\test_patches_100\OL_test_100.h5'
 val_dataset = MyDataset(file_path=test_file_path, transform=None)
 val_loader = DataLoader(val_dataset, batch_size=2, num_workers=0, pin_memory=True,  shuffle=False)
 model = ResNet()
-checkpoint_path = 'T3/Frame/ckpt/ResNet4.pth'
+checkpoint_path = 'T3/Frame/ckpt/ResNet6.pth'
 checkpoint = torch.load(checkpoint_path)
 model.load_state_dict(checkpoint['model_state_dict'])
 model = model.to(device)

@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader, Dataset
-from model import MyDataset, ForkNet, ResNet, CustomLoss, ResNetFPN, custom_transform
+from model import MyDataset, ForkNet, ResNet, CustomLoss, ResNetFPN, custom_transform, ConvNeXtNet
 from torchmetrics.functional import structural_similarity_index_measure as SSIM
 from torchmetrics.functional import peak_signal_noise_ratio as PSNR
 from torchmetrics.functional import mean_squared_error as MSE
@@ -71,8 +71,8 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 test_file_path = r'T3\Frame\data\patches\test_patches_100\OL_test_100.h5'
 val_dataset = MyDataset(file_path=test_file_path, transform=None)
 val_loader = DataLoader(val_dataset, batch_size=2, num_workers=0, pin_memory=True,  shuffle=False)
-model = ResNet()
-checkpoint_path = 'T3/Frame/ckpt/ResNet6.pth'
+model = ConvNeXtNet()
+checkpoint_path = 'T3/Frame/ckpt/ConvNeXtNet1_best.pth'
 checkpoint = torch.load(checkpoint_path)
 model.load_state_dict(checkpoint['model_state_dict'])
 model = model.to(device)

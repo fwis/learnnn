@@ -18,7 +18,7 @@ model = ResNet()
 # model = ResNetFPN()
 
 # Load checkpoint
-checkpoint_path = 'T3\Frame\ckpt\ResNet3.pth'
+checkpoint_path = 'T3\Frame\ckpt\ResNet6.pth'
 checkpoint = torch.load(checkpoint_path)
 model.load_state_dict(checkpoint['model_state_dict'])
 model = model.to(device)

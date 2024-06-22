@@ -96,9 +96,9 @@ class ResNet(nn.Module):
         self.layer2 = nn.Sequential(*resnet_block(64, 128, num_blocks[1]))
         # self.layer3 = nn.Sequential(*resnet_block(64, 32, num_blocks[2]))
         
-        self.layer4_1 = nn.Sequential(*resnet_block(128, 32, num_blocks[3])) if num_blocks[3] > 0 else nn.Identity()
-        self.layer4_2 = nn.Sequential(*resnet_block(128, 32, num_blocks[3])) if num_blocks[3] > 0 else nn.Identity()
-        self.layer4_3 = nn.Sequential(*resnet_block(128, 32, num_blocks[3])) if num_blocks[3] > 0 else nn.Identity()
+        self.layer4_1 = nn.Sequential(*resnet_block(128, 32, num_blocks[3]))
+        self.layer4_2 = nn.Sequential(*resnet_block(128, 32, num_blocks[3]))
+        self.layer4_3 = nn.Sequential(*resnet_block(128, 32, num_blocks[3]))
         
         # Output layer
         # Depthwise separabel convolution
@@ -109,8 +109,6 @@ class ResNet(nn.Module):
         self.conv2_2 = nn.Conv2d(32,1,kernel_size=1,stride=1,padding=0)
         self.conv2_3 = nn.Conv2d(32,1,kernel_size=1,stride=1,padding=0)
         
-        # self.dropout = nn.Dropout(0.5)
-        
     def forward(self, x):
         x = self.conv1(x)
         x = self.bn1(x)
@@ -120,17 +118,14 @@ class ResNet(nn.Module):
         # x = self.layer3(x)
 
         aop = self.layer4_1(x)
-        # aop = self.dropout(aop)
         aop = self.conv1_1(aop)
         aop = self.conv2_1(aop)
         
         dolp = self.layer4_2(x)
-        # dolp = self.dropout(dolp)
         dolp = self.conv1_2(dolp)
         dolp = self.conv2_2(dolp)
         
         s0 = self.layer4_3(x)
-        # s0 = self.dropout(s0)
         s0 = self.conv1_3(s0)
         s0 = self.conv2_3(s0)
         
@@ -284,9 +279,9 @@ class ConvNeXtNet(nn.Module):
         super(ConvNeXtNet, self).__init__()
         self.conv1 = nn.Conv2d(1, 64, kernel_size=5, stride=1, padding=2, bias=False)
         self.bn1 = nn.BatchNorm2d(64)
-        self.relu = nn.ReLU(inplace=True)
+        self.gelu = nn.GELU()
         
-        # Residual blocks
+        # ConvNeXt blocks
         self.layer1 = nn.Sequential(*convnext_block(64, 128, num_blocks[0]))
         self.layer2 = nn.Sequential(*convnext_block(128,64, num_blocks[1]))
         
@@ -306,19 +301,24 @@ class ConvNeXtNet(nn.Module):
     def forward(self, x):
         x = self.conv1(x)
         x = self.bn1(x)
-        x = self.relu(x)
+        x = self.gelu(x)
         x = self.layer1(x)
+        x = self.gelu(x)
         x = self.layer2(x)
+        x = self.gelu(x)
 
         aop = self.layer3_1(x)
+        aop = self.gelu(aop)
         aop = self.conv1_1(aop)
         aop = self.conv2_1(aop)
         
         dolp = self.layer3_2(x)
+        dolp = self.gelu(dolp)
         dolp = self.conv1_2(dolp)
         dolp = self.conv2_2(dolp)
         
         s0 = self.layer3_3(x)
+        s0 = self.gelu(s0)
         s0 = self.conv1_3(s0)
         s0 = self.conv2_3(s0)
         

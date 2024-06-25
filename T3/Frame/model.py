@@ -14,6 +14,9 @@ import warnings
 # Suppress specific warnings
 warnings.filterwarnings("ignore", category=UserWarning, message="Unsupported Windows version")
 
+'''
+CNN
+'''
 class ForkNet(nn.Module):
     def __init__(self, padding='same'):
         super(ForkNet, self).__init__()
@@ -399,3 +402,149 @@ class CustomLoss(nn.Module):
                       0.3 * abs(aop_true - aop_pred)) - 0.03 * SSIM(aop_pred,aop_true, data_range= math.pi/2) + physics_loss
 
         return total_loss
+    
+'''
+GAN
+'''
+# Generator
+class ResNetGenerator(nn.Module):
+    def __init__(self, num_blocks=[1, 1, 2]):
+        super(ResNetGenerator, self).__init__()
+        self.conv1 = nn.Conv2d(1, 64, kernel_size=5, stride=1, padding=2, bias=False)
+        self.bn1 = nn.BatchNorm2d(64)
+        self.relu = nn.ReLU(inplace=True)
+        
+        # Residual blocks
+        self.layer1 = nn.Sequential(*resnet_block(64, 64, num_blocks[0], first_block=True))
+        self.layer2 = nn.Sequential(*resnet_block(64, 128, num_blocks[1]))
+        
+        self.layer3_1 = nn.Sequential(*resnet_block(128, 32, num_blocks[2]))
+        self.layer3_2 = nn.Sequential(*resnet_block(128, 32, num_blocks[2]))
+        self.layer3_3 = nn.Sequential(*resnet_block(128, 32, num_blocks[2]))
+        
+        # Output layer
+        # Depthwise separable convolution
+        self.conv1_1 = nn.Conv2d(32, 32, kernel_size=3, stride=1, padding=1, groups=32)
+        self.conv1_2 = nn.Conv2d(32, 32, kernel_size=3, stride=1, padding=1, groups=32)
+        self.conv1_3 = nn.Conv2d(32, 32, kernel_size=3, stride=1, padding=1, groups=32)
+        self.conv2_1 = nn.Conv2d(32, 1, kernel_size=1, stride=1, padding=0)
+        self.conv2_2 = nn.Conv2d(32, 1, kernel_size=1, stride=1, padding=0)
+        self.conv2_3 = nn.Conv2d(32, 1, kernel_size=1, stride=1, padding=0)
+        
+    def forward(self, x):
+        x = self.conv1(x)
+        x = self.bn1(x)
+        x = self.relu(x)
+        x = self.layer1(x)
+        x = self.layer2(x)
+
+        aop = self.layer3_1(x)
+        aop = self.conv1_1(aop)
+        aop = self.conv2_1(aop)
+        
+        dolp = self.layer3_2(x)
+        dolp = self.conv1_2(dolp)
+        dolp = self.conv2_2(dolp)
+        
+        s0 = self.layer3_3(x)
+        s0 = self.conv1_3(s0)
+        s0 = self.conv2_3(s0)
+        
+        return aop, dolp, s0
+
+# Discriminator
+class Discriminator(nn.Module):
+    def __init__(self):
+        super(Discriminator, self).__init__()
+        self.disc_aop = nn.Sequential(
+            nn.Conv2d(1, 64, kernel_size=5, stride=1, padding=2),
+            nn.LeakyReLU(0.2, inplace=True),
+            nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=1),
+            nn.LeakyReLU(0.2, inplace=True),
+            nn.Conv2d(128, 256, kernel_size=3, stride=1, padding=1),
+            nn.LeakyReLU(0.2, inplace=True),
+            nn.Conv2d(256, 1, kernel_size=3, stride=1, padding=1),
+            nn.Sigmoid()
+        )
+        self.disc_dolp = nn.Sequential(
+            nn.Conv2d(1, 64, kernel_size=5, stride=1, padding=2),
+            nn.LeakyReLU(0.2, inplace=True),
+            nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=1),
+            nn.LeakyReLU(0.2, inplace=True),
+            nn.Conv2d(128, 256, kernel_size=3, stride=1, padding=1),
+            nn.LeakyReLU(0.2, inplace=True),
+            nn.Conv2d(256, 1, kernel_size=3, stride=1, padding=1),
+            nn.Sigmoid()
+        )
+        self.disc_s0 = nn.Sequential(
+            nn.Conv2d(1, 64, kernel_size=5, stride=1, padding=2),
+            nn.LeakyReLU(0.2, inplace=True),
+            nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=1),
+            nn.LeakyReLU(0.2, inplace=True),
+            nn.Conv2d(128, 256, kernel_size=3, stride=1, padding=1),
+            nn.LeakyReLU(0.2, inplace=True),
+            nn.Conv2d(256, 1, kernel_size=3, stride=1, padding=1),
+            nn.Sigmoid()
+        )
+
+    def forward(self, aop, dolp, s0):
+        out_aop = self.disc_aop(aop)
+        out_dolp = self.disc_dolp(dolp)
+        out_s0 = self.disc_s0(s0)
+        
+        return out_aop, out_dolp, out_s0
+    
+class CustomGANLoss(nn.Module):
+    def __init__(self):
+        super(CustomGANLoss, self).__init__()
+        self.l1_loss = nn.L1Loss()
+
+    def forward(self, s0_pred, s0_true, dolp_pred, dolp_true, aop_pred, aop_true):
+        loss_s0 = self.l1_loss(s0_pred, s0_true)
+        loss_dolp = self.l1_loss(dolp_pred, dolp_true)
+        loss_aop = self.l1_loss(aop_pred, aop_true)
+        return loss_s0 + loss_dolp + loss_aop
+
+
+# ESRGAN
+class ResidualDenseBlock_5C(nn.Module):
+    def __init__(self, nf=64, gc=32, bias=True):
+        super(ResidualDenseBlock_5C, self).__init__()
+        # gc: growth channel, i.e. intermediate channels
+        self.conv1 = nn.Conv2d(nf, gc, 3, 1, 1, bias=bias)
+        self.conv2 = nn.Conv2d(nf + gc, gc, 3, 1, 1, bias=bias)
+        self.conv3 = nn.Conv2d(nf + 2 * gc, gc, 3, 1, 1, bias=bias)
+        self.conv4 = nn.Conv2d(nf + 3 * gc, gc, 3, 1, 1, bias=bias)
+        self.conv5 = nn.Conv2d(nf + 4 * gc, nf, 3, 1, 1, bias=bias)
+        self.lrelu = nn.LeakyReLU(negative_slope=0.2, inplace=True)
+
+        # initialization
+        # mutil.initialize_weights([self.conv1, self.conv2, self.conv3, self.conv4, self.conv5], 0.1)
+
+    def forward(self, x):
+        x1 = self.lrelu(self.conv1(x))
+        x2 = self.lrelu(self.conv2(torch.cat((x, x1), 1)))
+        x3 = self.lrelu(self.conv3(torch.cat((x, x1, x2), 1)))
+        x4 = self.lrelu(self.conv4(torch.cat((x, x1, x2, x3), 1)))
+        x5 = self.conv5(torch.cat((x, x1, x2, x3, x4), 1))
+        return x5 * 0.2 + x
+
+class RRDB(nn.Module):
+    '''Residual in Residual Dense Block'''
+    def __init__(self, nf, gc=32):
+        super(RRDB, self).__init__()
+        self.RDB1 = ResidualDenseBlock_5C(nf, gc)
+        self.RDB2 = ResidualDenseBlock_5C(nf, gc)
+        self.RDB3 = ResidualDenseBlock_5C(nf, gc)
+
+    def forward(self, x):
+        out = self.RDB1(x)
+        out = self.RDB2(out)
+        out = self.RDB3(out)
+        return out * 0.2 + x
+    
+def make_layer(block, n_layers):
+    layers = []
+    for _ in range(n_layers):
+        layers.append(block())
+    return nn.Sequential(*layers)

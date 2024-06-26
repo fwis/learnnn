@@ -6,7 +6,6 @@ from model import MyDataset, ForkNet, ResNet, CustomLoss, ResNetFPN, custom_tran
 from torchmetrics.functional import structural_similarity_index_measure as SSIM
 from torchmetrics.functional import peak_signal_noise_ratio as PSNR
 from torchmetrics.functional import mean_squared_error as MSE
-import tensorboard
 
 def test(model, dataloader, device='cuda'):
     # Set the model to evaluation mode

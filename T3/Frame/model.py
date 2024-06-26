@@ -274,23 +274,29 @@ def convnext_block(dim, dim_out, num_blocks):
     for i in range(num_blocks):
         blk.append(NeXtBlock(dim=dim))
     if dim != dim_out:
-        blk.append(nn.Conv2d(dim,dim_out,kernel_size=1,stride=1))
+        blk.append(nn.Sequential(
+            nn.Conv2d(dim, dim_out, kernel_size=1, stride=1),
+            LayerNorm(dim_out, eps=1e-6, data_format="channels_first")))
     return blk
 
 class ConvNeXtNet(nn.Module):
-    def __init__(self, num_blocks=[1, 1, 2]):
+    def __init__(self, num_blocks=[1, 1, 3, 1], dim=[128, 256, 64, 32]):
         super(ConvNeXtNet, self).__init__()
-        self.conv1 = nn.Conv2d(1, 64, kernel_size=5, stride=1, padding=2, bias=False)
-        self.bn1 = nn.BatchNorm2d(64)
+        self.conv1 = nn.Conv2d(1, 64, kernel_size=7, stride=1, padding=3, bias=False)
+        self.bn = nn.BatchNorm2d(64)
         self.gelu = nn.GELU()
         
         # ConvNeXt blocks
-        self.layer1 = nn.Sequential(*convnext_block(64, 128, num_blocks[0]))
-        self.layer2 = nn.Sequential(*convnext_block(128,64, num_blocks[1]))
+        self.layer1 = nn.Sequential(*convnext_block(64, dim[0], num_blocks[0])) 
+        self.layer2 = nn.Sequential(*convnext_block(dim[0],dim[1], num_blocks[1]))
         
-        self.layer3_1 = nn.Sequential(*convnext_block(64,32, num_blocks[2]))
-        self.layer3_2 = nn.Sequential(*convnext_block(64,32, num_blocks[2]))
-        self.layer3_3 = nn.Sequential(*convnext_block(64,32, num_blocks[2]))
+        self.layer3_1 = nn.Sequential(*convnext_block(dim[1],dim[2], num_blocks[2]))
+        self.layer3_2 = nn.Sequential(*convnext_block(dim[1],dim[2], num_blocks[2]))
+        self.layer3_3 = nn.Sequential(*convnext_block(dim[1],dim[2], num_blocks[2]))
+        
+        self.layer4_1 = nn.Sequential(*convnext_block(dim[2],dim[3], num_blocks[3]))
+        self.layer4_2 = nn.Sequential(*convnext_block(dim[2],dim[3], num_blocks[3]))
+        self.layer4_3 = nn.Sequential(*convnext_block(dim[2],dim[3], num_blocks[3]))
         
         # Output layer
         # Depthwise separabel convolution
@@ -303,25 +309,23 @@ class ConvNeXtNet(nn.Module):
         
     def forward(self, x):
         x = self.conv1(x)
-        x = self.bn1(x)
+        x = self.bn(x)
         x = self.gelu(x)
         x = self.layer1(x)
-        x = self.gelu(x)
         x = self.layer2(x)
-        x = self.gelu(x)
 
         aop = self.layer3_1(x)
-        aop = self.gelu(aop)
+        aop = self.layer4_1(aop)
         aop = self.conv1_1(aop)
         aop = self.conv2_1(aop)
         
         dolp = self.layer3_2(x)
-        dolp = self.gelu(dolp)
+        dolp = self.layer4_2(dolp)
         dolp = self.conv1_2(dolp)
         dolp = self.conv2_2(dolp)
         
         s0 = self.layer3_3(x)
-        s0 = self.gelu(s0)
+        s0 = self.layer4_3(s0)
         s0 = self.conv1_3(s0)
         s0 = self.conv2_3(s0)
         

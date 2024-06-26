@@ -10,7 +10,7 @@ import time
 from torch.cuda.amp import GradScaler, autocast
 
 
-def train(model, train_loader, val_loader, device, num_epochs=10, learning_rate=0.001, weight_decay=1e-4, checkpoint_path='T3/Frame/ckpt/ConvNeXtNet1.pth', savebest=True):
+def train(model, train_loader, val_loader, device, num_epochs=10, learning_rate=0.001, weight_decay=1e-4, checkpoint_path='T3/Frame/ckpt/ConvNeXtNet2.pth', savebest=True):
     # Model, criterion and optimizer
     model = model.to(device)
     criterion = CustomLoss().to(device)
@@ -113,7 +113,7 @@ if __name__ == "__main__":
     # model = ResNet()
     # model = ResNetFPN()
     model = ConvNeXtNet()
-    batch_size = 64
+    batch_size = 96
     weight_decay = 1e-4
     
     train_file_path = r'T3\Frame\data\patches\train_patches_100\OL_train_100.h5'

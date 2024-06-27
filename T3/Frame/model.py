@@ -497,17 +497,32 @@ class Discriminator(nn.Module):
         out_s0 = self.disc_s0(s0)
         
         return out_aop, out_dolp, out_s0
-    
+
+# Loss
 class CustomGANLoss(nn.Module):
     def __init__(self):
         super(CustomGANLoss, self).__init__()
         self.l1_loss = nn.L1Loss()
 
     def forward(self, s0_pred, s0_true, dolp_pred, dolp_true, aop_pred, aop_true):
+        # Physics informed loss        
+        Q_pred = dolp_pred * s0_pred * torch.cos(2 * aop_pred)
+        U_pred = dolp_pred * s0_pred * torch.sin(2 * aop_pred)
+        Q_true = dolp_true * s0_true * torch.cos(2 * aop_true)
+        U_true = dolp_true * s0_true * torch.sin(2 * aop_true)        
+        loss_Q = torch.mean(abs(Q_pred - Q_true))
+        loss_U = torch.mean(abs(U_pred - U_true))
+        physics_loss = loss_Q + loss_U
+        # L1 loss
         loss_s0 = self.l1_loss(s0_pred, s0_true)
         loss_dolp = self.l1_loss(dolp_pred, dolp_true)
         loss_aop = self.l1_loss(aop_pred, aop_true)
-        return loss_s0 + loss_dolp + loss_aop
+        # Total loss
+        total_loss  = torch.mean(0.1 * loss_s0 + 
+                      0.6 * loss_dolp + 
+                      0.3 * loss_aop) - 0.03 * SSIM(aop_pred,aop_true, data_range= math.pi/2) + physics_loss
+        
+        return total_loss
 
 
 # ESRGAN

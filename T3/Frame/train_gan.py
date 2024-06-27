@@ -9,7 +9,7 @@ from torch.utils.tensorboard import SummaryWriter
 import time
 from torch.cuda.amp import GradScaler, autocast
 
-def train(generator, discriminator, train_loader, val_loader, device, num_epochs=10, learning_rate=0.0001, weight_decay=1e-4, checkpoint_path='T3/Frame/ckpt/ESRGAN.pth', savebest=True):
+def train(generator, discriminator, train_loader, val_loader, device, num_epochs=10, learning_rate=0.0001, weight_decay=1e-4, checkpoint_path='T3/Frame/ckpt/GAN1.pth', savebest=True):
     generator = generator.to(device)
     discriminator = discriminator.to(device)
     
@@ -152,7 +152,7 @@ if __name__ == "__main__":
     generator = ResNetGenerator()
     discriminator = Discriminator()
 
-    batch_size = 32
+    batch_size = 40
     weight_decay = 1e-4
 
     train_file_path = r'T3\Frame\data\patches\train_patches_100\OL_train_100.h5'

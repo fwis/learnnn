@@ -72,7 +72,7 @@ test_file_path = r'T3\Frame\data\patches\test_patches_100\OL_test_100.h5'
 val_dataset = MyDataset(file_path=test_file_path, transform=None)
 val_loader = DataLoader(val_dataset, batch_size=2, num_workers=0, pin_memory=True,  shuffle=False)
 model = ConvNeXtNet()
-checkpoint_path = 'T3/Frame/ckpt/ConvNeXtNet1_best.pth'
+checkpoint_path = 'T3/Frame/ckpt/ConvNeXtNet2_best.pth'
 checkpoint = torch.load(checkpoint_path)
 model.load_state_dict(checkpoint['model_state_dict'])
 model = model.to(device)

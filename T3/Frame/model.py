@@ -280,7 +280,7 @@ def convnext_block(dim, dim_out, num_blocks):
     return blk
 
 class ConvNeXtNet(nn.Module):
-    def __init__(self, num_blocks=[1, 1, 3, 1], dim=[128, 256, 64, 32]):
+    def __init__(self, num_blocks=[1, 1, 3, 1], dim=[64, 128, 64, 32]):
         super(ConvNeXtNet, self).__init__()
         self.conv1 = nn.Conv2d(1, 64, kernel_size=7, stride=1, padding=3, bias=False)
         self.bn = nn.BatchNorm2d(64)

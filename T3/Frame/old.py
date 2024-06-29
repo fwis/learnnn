@@ -172,3 +172,146 @@ class GradNormLoss(nn.Module):
         grad_norm_loss = (self.alpha / grads_norm) * total_loss
 
         return grad_norm_loss
+    
+    
+    
+    
+# def train(generator, discriminator, train_loader, val_loader, device, num_epochs=10, learning_rate=0.0001, weight_decay=1e-4, checkpoint_path='T3/Frame/ckpt/GAN3.pth', savebest=True):
+#     generator = generator.to(device)
+#     discriminator = discriminator.to(device)
+    
+#     optimizer_G = optim.Adam(generator.parameters(), lr=learning_rate, weight_decay=weight_decay)
+#     optimizer_D = optim.Adam(discriminator.parameters(), lr=learning_rate, weight_decay=weight_decay)
+    
+#     scaler_G = GradScaler()
+#     scaler_D = GradScaler()
+    
+#     # Loss functions
+#     adversarial_criterion = nn.BCEWithLogitsLoss().to(device)
+#     content_criterion = CustomGANLoss().to(device)
+#     # pixel_criterion = nn.L1Loss().to(device)
+    
+#     # TensorBoard
+#     log_dir = "T3/Frame/logs/fit/" + time.strftime("%Y%m%d-%H%M%S")
+#     writer = SummaryWriter(log_dir)
+    
+#     best_val_loss = float('inf')
+
+#     # Load checkpoint if exists
+#     if os.path.exists(checkpoint_path):
+#         checkpoint = torch.load(checkpoint_path)
+#         generator.load_state_dict(checkpoint['generator_state_dict'])
+#         discriminator.load_state_dict(checkpoint['discriminator_state_dict'])
+#         print(f'Loaded checkpoint.')
+        
+#     for epoch in range(num_epochs):
+#         generator.train()
+#         discriminator.train()
+#         running_loss_G = 0.0
+#         running_loss_D = 0.0
+#         train_loss_G = 0.0
+#         train_loss_D = 0.0
+#         start_time = time.time()
+        
+#         for i, (data, aop, dolp, s0) in enumerate(train_loader):
+#             inputs = data.to(device)
+#             aop_true = aop.to(device)
+#             dolp_true = dolp.to(device)
+#             s0_true = s0.to(device)
+            
+#             # Update generator
+#             optimizer_G.zero_grad()
+            
+#             with autocast():
+#                 aop_pred, dolp_pred, s0_pred = generator(inputs)
+#                 # pixel_loss = pixel_criterion(s0_pred, s0_true)
+#                 content_loss = content_criterion(s0_pred, s0_true, dolp_pred, dolp_true, aop_pred, aop_true)
+#                 disc_outputs = discriminator(aop_pred, dolp_pred, s0_pred)
+#                 adversarial_loss = (adversarial_criterion(disc_outputs[0], aop_true) +
+#                                     adversarial_criterion(disc_outputs[1], dolp_true) +
+#                                     adversarial_criterion(disc_outputs[2], s0_true)) / 3
+#                 loss_G = content_loss + 1e-3 * adversarial_loss
+
+#             scaler_G.scale(loss_G).backward(retain_graph=True)
+#             scaler_G.step(optimizer_G)
+#             scaler_G.update()
+#             running_loss_G += loss_G.item()
+#             train_loss_G += loss_G.item()
+            
+#             with torch.no_grad():
+#                 aop_pred, dolp_pred, s0_pred = generator(inputs)
+                
+#             optimizer_D.zero_grad()
+            
+#             with autocast():
+#                 real_loss = (adversarial_criterion(discriminator(aop_true, dolp_true, s0_true)[0], aop_true) +
+#                              adversarial_criterion(discriminator(aop_true, dolp_true, s0_true)[1], dolp_true) +
+#                              adversarial_criterion(discriminator(aop_true, dolp_true, s0_true)[2], s0_true)) / 3
+#                 fake_loss = (adversarial_criterion(discriminator(aop_pred.detach(), dolp_pred.detach(), s0_pred.detach())[0], aop_pred) +
+#                              adversarial_criterion(discriminator(aop_pred.detach(), dolp_pred.detach(), s0_pred.detach())[1], dolp_pred) +
+#                              adversarial_criterion(discriminator(aop_pred.detach(), dolp_pred.detach(), s0_pred.detach())[2], s0_pred)) / 3
+#                 loss_D = (real_loss + fake_loss) / 2
+
+#             scaler_D.scale(loss_D).backward()
+#             scaler_D.step(optimizer_D)
+#             scaler_D.update()
+#             running_loss_D += loss_D.item()
+#             train_loss_D += loss_D.item()
+            
+#             if i % 100 == 99:
+#                 print(f'[Epoch {epoch + 1}, Batch {i + 1}] Generator loss: {running_loss_G / 100:.4f}, Discriminator loss: {running_loss_D / 100:.4f}')
+#                 running_loss_G = 0.0
+#                 running_loss_D = 0.0
+                
+#         # Calculate elapsed time and training loss
+#         elapsed_time = time.time() - start_time
+#         writer.add_scalar('Training Time', elapsed_time, epoch + 1)
+        
+#         avg_loss_G = train_loss_G / len(train_loader)
+#         avg_loss_D = train_loss_D / len(train_loader)
+#         writer.add_scalars('Loss', {'Generator loss': avg_loss_G, 'Discriminator loss': avg_loss_D}, global_step=epoch + 1)
+#         torch.cuda.empty_cache()
+        
+#         # Validation
+#         generator.eval()
+#         val_loss = 0.0
+#         with torch.no_grad():
+#             for data, aop, dolp, s0 in val_loader:
+#                 inputs = data.to(device)
+#                 aop_true = aop.to(device)
+#                 dolp_true = dolp.to(device)
+#                 s0_true = s0.to(device)
+#                 aop_pred, dolp_pred, s0_pred = generator(inputs)
+                
+#                 loss = content_criterion(s0_pred, s0_true, dolp_pred, dolp_true, aop_pred, aop_true)
+#                 val_loss += loss.item()
+        
+#         val_loss /= len(val_loader)
+#         print(f'Epoch {epoch + 1}, Validation Loss: {val_loss:.4f}')
+#         writer.add_scalar('Validation Loss', val_loss, epoch + 1)
+        
+#         torch.cuda.empty_cache()
+
+#         # Save checkpoint
+#         torch.save({
+#             'generator_state_dict': generator.state_dict(),
+#             'discriminator_state_dict': discriminator.state_dict()
+#         }, checkpoint_path)
+#         print('Checkpoint saved.')
+
+#         # Save best
+#         if savebest:
+#             if val_loss < best_val_loss:
+#                 best_val_loss = val_loss
+#                 best_epoch = epoch + 1
+#                 best_checkpoint_path = checkpoint_path.replace('.pth', '_best.pth')
+#                 torch.save({
+#                     'generator_state_dict': generator.state_dict(),
+#                     'discriminator_state_dict': discriminator.state_dict(),
+#                     'epoch': best_epoch,
+#                     'val_loss': val_loss,
+#                 }, best_checkpoint_path)
+#                 print('Best checkpoint saved.')
+#         torch.cuda.empty_cache()
+#     writer.close()
+#     print('Finished Training')

@@ -10,9 +10,7 @@ import math
 import h5py
 from torchmetrics.functional import structural_similarity_index_measure as SSIM
 import random
-import warnings
-# Suppress specific warnings
-warnings.filterwarnings("ignore", category=UserWarning, message="Unsupported Windows version")
+import functools
 
 '''
 CNN
@@ -460,43 +458,33 @@ class ResNetGenerator(nn.Module):
 class Discriminator(nn.Module):
     def __init__(self):
         super(Discriminator, self).__init__()
-        self.disc_aop = nn.Sequential(
+        # Shared part
+        self.shared = nn.Sequential(
             nn.Conv2d(1, 64, kernel_size=5, stride=1, padding=2),
             nn.LeakyReLU(0.2, inplace=True),
             nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=1),
             nn.LeakyReLU(0.2, inplace=True),
             nn.Conv2d(128, 256, kernel_size=3, stride=1, padding=1),
-            nn.LeakyReLU(0.2, inplace=True),
-            nn.Conv2d(256, 1, kernel_size=3, stride=1, padding=1),
-            nn.Sigmoid()
+            nn.LeakyReLU(0.2, inplace=True)
         )
-        self.disc_dolp = nn.Sequential(
-            nn.Conv2d(1, 64, kernel_size=5, stride=1, padding=2),
-            nn.LeakyReLU(0.2, inplace=True),
-            nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=1),
-            nn.LeakyReLU(0.2, inplace=True),
-            nn.Conv2d(128, 256, kernel_size=3, stride=1, padding=1),
-            nn.LeakyReLU(0.2, inplace=True),
-            nn.Conv2d(256, 1, kernel_size=3, stride=1, padding=1),
-            nn.Sigmoid()
-        )
-        self.disc_s0 = nn.Sequential(
-            nn.Conv2d(1, 64, kernel_size=5, stride=1, padding=2),
-            nn.LeakyReLU(0.2, inplace=True),
-            nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=1),
-            nn.LeakyReLU(0.2, inplace=True),
-            nn.Conv2d(128, 256, kernel_size=3, stride=1, padding=1),
-            nn.LeakyReLU(0.2, inplace=True),
-            nn.Conv2d(256, 1, kernel_size=3, stride=1, padding=1),
-            nn.Sigmoid()
-        )
+        
+        # Branches for aop, dolp, s0
+        self.branch_aop = nn.Sequential(nn.Conv2d(256, 1, kernel_size=3, stride=1, padding=1))
+        self.branch_dolp = nn.Sequential(nn.Conv2d(256, 1, kernel_size=3, stride=1, padding=1))
+        self.branch_s0 = nn.Sequential(nn.Conv2d(256, 1, kernel_size=3, stride=1, padding=1))
 
     def forward(self, aop, dolp, s0):
-        out_aop = self.disc_aop(aop)
-        out_dolp = self.disc_dolp(dolp)
-        out_s0 = self.disc_s0(s0)
+        out_aop = self.shared(aop)
+        out_aop = self.branch_aop(out_aop)
+
+        out_dolp = self.shared(dolp)
+        out_dolp = self.branch_dolp(out_dolp)
+
+        out_s0 = self.shared(s0)
+        out_s0 = self.branch_s0(out_s0)
         
         return out_aop, out_dolp, out_s0
+
 
 # Loss
 class CustomGANLoss(nn.Module):
@@ -567,3 +555,30 @@ def make_layer(block, n_layers):
     for _ in range(n_layers):
         layers.append(block())
     return nn.Sequential(*layers)
+
+class RRDBNet(nn.Module):
+    def __init__(self, in_nc, out_nc, nf, nb, gc=32):
+        super(RRDBNet, self).__init__()
+        RRDB_block_f = functools.partial(RRDB, nf=nf, gc=gc)
+
+        self.conv_first = nn.Conv2d(in_nc, nf, 3, 1, 1, bias=True)
+        self.RRDB_trunk = make_layer(RRDB_block_f, nb)
+        self.trunk_conv = nn.Conv2d(nf, nf, 3, 1, 1, bias=True)
+        #### upsampling
+        self.upconv1 = nn.Conv2d(nf, nf, 3, 1, 1, bias=True)
+        self.upconv2 = nn.Conv2d(nf, nf, 3, 1, 1, bias=True)
+        self.HRconv = nn.Conv2d(nf, nf, 3, 1, 1, bias=True)
+        self.conv_last = nn.Conv2d(nf, out_nc, 3, 1, 1, bias=True)
+
+        self.lrelu = nn.LeakyReLU(negative_slope=0.2, inplace=True)
+
+    def forward(self, x):
+        fea = self.conv_first(x)
+        trunk = self.trunk_conv(self.RRDB_trunk(fea))
+        fea = fea + trunk
+
+        fea = self.lrelu(self.upconv1(F.interpolate(fea, scale_factor=2, mode='nearest')))
+        fea = self.lrelu(self.upconv2(F.interpolate(fea, scale_factor=2, mode='nearest')))
+        out = self.conv_last(self.lrelu(self.HRconv(fea)))
+
+        return out

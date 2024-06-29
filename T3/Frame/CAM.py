@@ -5,7 +5,7 @@ from pytorch_grad_cam import GradCAM
 from pytorch_grad_cam.utils.image import show_cam_on_image
 import numpy as np
 import cv2
-from model import ConvNeXtNet, ResNet
+from model import ConvNeXtNet, ResNet, ResNetGenerator
 import matplotlib.pyplot as plt
 
 # Multi-task to Single-task
@@ -30,23 +30,23 @@ class image_target:
 
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-model = ConvNeXtNet()
-checkpoint_path = 'T3/Frame/ckpt/ConvNeXtNet1_best.pth'
+model = ResNetGenerator()
+checkpoint_path = 'T3/Frame/ckpt/GAN2_best.pth'
 checkpoint = torch.load(checkpoint_path)
-model.load_state_dict(checkpoint['model_state_dict'])
+model.load_state_dict(checkpoint['generator_state_dict'])
 model.eval()
 model.to(device)
-task_index = 1 # [0, 1, 2] = aop, dolp, s0
+task_index = 2 # [0, 1, 2] = aop, dolp, s0
 single_task_model = single_task_model_wrapper(model, task_index)
 
 # Set target layer
-target_layer = single_task_model.model.layer3_2
+target_layer = single_task_model.model.layer3_3
 
 # Create GradCAM instance
 cam = GradCAM(model=single_task_model, target_layers=[target_layer])
 
 # Input image
-input_tensor = torch.load(r'T3\Frame\test\7_data.pt').to(torch.device('cuda' if torch.cuda.is_available() else 'cpu'))
+input_tensor = torch.load(r'T3\Frame\test\83_data.pt').to(torch.device('cuda' if torch.cuda.is_available() else 'cpu'))
 input_tensor = input_tensor[200:1000,200:1000].unsqueeze(0).unsqueeze(0)
 original_image = input_tensor.clone()
 

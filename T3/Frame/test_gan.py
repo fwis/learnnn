@@ -67,13 +67,14 @@ def test_gan(model, dataloader, device='cuda'):
         print(f'PSNR of DoLP: {PSNR_dolp}')
         print(f'PSNR of S0: {PSNR_s0}')
 
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-test_file_path = r'T3\Frame\data\patches\test_patches_100\OL_test_100.h5'
-val_dataset = MyDataset(file_path=test_file_path, transform=None)
-val_loader = DataLoader(val_dataset, batch_size=2, num_workers=0, pin_memory=True,  shuffle=False)
-model = ResNetGenerator()
-checkpoint_path = 'T3/Frame/ckpt/GAN1_best.pth'
-checkpoint = torch.load(checkpoint_path)
-model.load_state_dict(checkpoint['generator_state_dict'])
-model = model.to(device)
-test_gan(model=model, dataloader=val_loader)
+if __name__ == "__main__":
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    test_file_path = r'T3\Frame\data\patches\test_patches_100\OL_test_100.h5'
+    val_dataset = MyDataset(file_path=test_file_path, transform=None)
+    val_loader = DataLoader(val_dataset, batch_size=2, num_workers=0, pin_memory=True,  shuffle=False)
+    model = ResNetGenerator()
+    checkpoint_path = 'T3/Frame/ckpt/GAN3_best.pth'
+    checkpoint = torch.load(checkpoint_path)
+    model.load_state_dict(checkpoint['generator_state_dict'])
+    model = model.to(device)
+    test_gan(model=model, dataloader=val_loader)

@@ -24,17 +24,17 @@ class ForkNet(nn.Module):
         # else:
         #     self.padding = 1
 
-        self.conv1 = nn.Conv2d(1, 48, kernel_size=3, padding=self.padding)
-        self.conv2 = nn.Conv2d(48, 32, kernel_size=3, padding=self.padding)
+        self.conv1 = nn.Conv2d(1, 96, kernel_size=5, padding=self.padding)
+        self.conv2 = nn.Conv2d(96, 48, kernel_size=3, padding=self.padding)
         
-        self.conv3_1 = nn.Conv2d(32, 24, kernel_size=3, padding=self.padding)
-        self.conv4_1 = nn.Conv2d(24, 1, kernel_size=3, padding=self.padding)
+        self.conv3_1 = nn.Conv2d(48, 32, kernel_size=3, padding=self.padding)
+        self.conv4_1 = nn.Conv2d(32, 1, kernel_size=5, padding=self.padding)
         
-        self.conv3_2 = nn.Conv2d(32, 24, kernel_size=3, padding=self.padding)
-        self.conv4_2 = nn.Conv2d(24, 1, kernel_size=3, padding=self.padding)
+        self.conv3_2 = nn.Conv2d(48, 32, kernel_size=3, padding=self.padding)
+        self.conv4_2 = nn.Conv2d(32, 1, kernel_size=5, padding=self.padding)
         
-        self.conv3_3 = nn.Conv2d(32, 24, kernel_size=3, padding=self.padding)
-        self.conv4_3 = nn.Conv2d(24, 1, kernel_size=3, padding=self.padding)
+        self.conv3_3 = nn.Conv2d(48, 32, kernel_size=3, padding=self.padding)
+        self.conv4_3 = nn.Conv2d(32, 1, kernel_size=5, padding=self.padding)
 
     def forward(self, x):
         x1 = F.relu(self.conv1(x))
@@ -46,11 +46,24 @@ class ForkNet(nn.Module):
         x3_2 = F.relu(self.conv3_2(x2))
         dolp = self.conv4_2(x3_2)
         
-        x3_3 = F.relu(self.conv3_3(x2))
+        x3_3 = F.tanh(self.conv3_3(x2))
         aop = self.conv4_3(x3_3)
-        # aop = torch.atan(aop) / 2. + math.pi / 4
+        aop = torch.atan(aop) / 2. + math.pi / 4
         
         return s0, dolp, aop
+    
+class ForkLoss(nn.Module):
+    def __init__(self, weight=1):
+        super(ForkLoss, self).__init__()
+        self.weight = weight
+        
+    def forward(self, s0_pred, s0_true, dolp_pred, dolp_true, aop_pred, aop_true):
+        # Total loss
+        total_loss  = torch.mean(0.1 * abs(s0_true - s0_pred) + 
+                      abs(dolp_true - dolp_pred) + 
+                      0.05 * abs(aop_true - aop_pred))  - 0.02 * SSIM(aop_pred,aop_true, data_range= math.pi/2)
+
+        return total_loss
     
 '''
 ResNet

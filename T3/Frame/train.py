@@ -4,16 +4,17 @@ import torch.optim as optim
 from torch.utils.data import DataLoader, Dataset, random_split, ConcatDataset
 from torch.optim.lr_scheduler import ExponentialLR
 import os
-from model import MyDataset, ForkNet, ResNet, CustomLoss, custom_transform, ResNetFPN, ConvNeXtNet
+from model import MyDataset, ForkNet, ResNet, CustomLoss, custom_transform, ResNetFPN, ConvNeXtNet, ForkLoss
 from torch.utils.tensorboard import SummaryWriter
 import time
 from torch.cuda.amp import GradScaler, autocast
 
 
-def train(model, train_loader, val_loader, device, num_epochs=10, learning_rate=0.001, weight_decay=1e-4, checkpoint_path='T3/Frame/ckpt/ConvNeXtNet2.pth', savebest=True):
+def train(model, train_loader, val_loader, device, num_epochs=10, learning_rate=0.001, weight_decay=1e-4, checkpoint_path='T3/Frame/ckpt/ForkNet10.pth', savebest=True):
     # Model, criterion and optimizer
     model = model.to(device)
-    criterion = CustomLoss().to(device)
+    # criterion = CustomLoss().to(device)
+    criterion = ForkLoss().to(device)
     optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
     scaler = GradScaler()  # Initialize gradient scaler for mixed precision training
     log_dir = "T3/Frame/logs/fit/" + time.strftime("%Y%m%d-%H%M%S")
@@ -109,15 +110,15 @@ if __name__ == "__main__":
     lr = 0.001
     num_epochs = 300
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    # model = ForkNet()
+    model = ForkNet()
     # model = ResNet()
     # model = ResNetFPN()
-    model = ConvNeXtNet()
+    # model = ConvNeXtNet()
     batch_size = 96
     weight_decay = 1e-4
     
-    train_file_path = r'T3\Frame\data\patches\train_patches_100\OL_train_100.h5'
-    test_file_path = r'T3\Frame\data\patches\test_patches_100\OL_test_100.h5'
+    train_file_path = r'T3\Frame\data\patches\train_patches_100\Fork_train_100.h5'
+    test_file_path = r'T3\Frame\data\patches\test_patches_100\Fork_test_100.h5'
     train_dataset = MyDataset(train_file_path, transform=custom_transform)
     val_dataset = MyDataset(test_file_path)
     

@@ -401,7 +401,8 @@ class CustomLoss(nn.Module):
         # Total loss
         total_loss  = torch.mean(0.1 * abs(s0_true - s0_pred) + 
                       0.6 * abs(dolp_true - dolp_pred) + 
-                      0.3 * abs(aop_true - aop_pred)) - 0.03 * SSIM(aop_pred,aop_true, data_range= math.pi/2) + physics_loss
+                      0.3 * abs(aop_true - aop_pred))  + physics_loss
+        # - 0.03 * SSIM(aop_pred,aop_true, data_range= math.pi/2)
 
         return total_loss
     
@@ -462,16 +463,22 @@ class Discriminator(nn.Module):
         self.shared = nn.Sequential(
             nn.Conv2d(1, 64, kernel_size=5, stride=1, padding=2),
             nn.LeakyReLU(0.2, inplace=True),
-            nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=1),
+            nn.Conv2d(64, 256, kernel_size=3, stride=1, padding=1),
             nn.LeakyReLU(0.2, inplace=True),
-            nn.Conv2d(128, 256, kernel_size=3, stride=1, padding=1),
-            nn.LeakyReLU(0.2, inplace=True)
+            # nn.Conv2d(128, 256, kernel_size=3, stride=1, padding=1),
+            # nn.LeakyReLU(0.2, inplace=True)
         )
         
         # Branches for aop, dolp, s0
-        self.branch_aop = nn.Sequential(nn.Conv2d(256, 1, kernel_size=3, stride=1, padding=1))
-        self.branch_dolp = nn.Sequential(nn.Conv2d(256, 1, kernel_size=3, stride=1, padding=1))
-        self.branch_s0 = nn.Sequential(nn.Conv2d(256, 1, kernel_size=3, stride=1, padding=1))
+        self.branch_aop = nn.Sequential(nn.Conv2d(256, 96, kernel_size=3, stride=1, padding=1),
+                                        nn.LeakyReLU(0.2, inplace=True),
+                                        nn.Conv2d(96, 1, kernel_size=3, stride=1, padding=1))
+        self.branch_dolp = nn.Sequential(nn.Conv2d(256, 96, kernel_size=3, stride=1, padding=1),
+                                         nn.LeakyReLU(0.2, inplace=True),
+                                         nn.Conv2d(96, 1, kernel_size=3, stride=1, padding=1))
+        self.branch_s0 = nn.Sequential(nn.Conv2d(256, 96, kernel_size=3, stride=1, padding=1),
+                                       nn.LeakyReLU(0.2, inplace=True),
+                                       nn.Conv2d(96, 1, kernel_size=3, stride=1, padding=1))
 
     def forward(self, aop, dolp, s0):
         out_aop = self.shared(aop)

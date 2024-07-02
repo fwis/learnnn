@@ -440,9 +440,9 @@ class ResNetGenerator(nn.Module):
         
         # Output layer
         # Depthwise separable convolution
-        self.conv1_1 = nn.Conv2d(32, 32, kernel_size=3, stride=1, padding=1, groups=32)
-        self.conv1_2 = nn.Conv2d(32, 32, kernel_size=3, stride=1, padding=1, groups=32)
-        self.conv1_3 = nn.Conv2d(32, 32, kernel_size=3, stride=1, padding=1, groups=32)
+        self.conv1_1 = nn.Conv2d(32, 32, kernel_size=5, stride=1, padding=2, groups=32)
+        self.conv1_2 = nn.Conv2d(32, 32, kernel_size=5, stride=1, padding=2, groups=32)
+        self.conv1_3 = nn.Conv2d(32, 32, kernel_size=5, stride=1, padding=2, groups=32)
         self.conv2_1 = nn.Conv2d(32, 1, kernel_size=1, stride=1, padding=0)
         self.conv2_2 = nn.Conv2d(32, 1, kernel_size=1, stride=1, padding=0)
         self.conv2_3 = nn.Conv2d(32, 1, kernel_size=1, stride=1, padding=0)

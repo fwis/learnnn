@@ -9,7 +9,7 @@ from torch.utils.tensorboard import SummaryWriter
 import time
 from torch.cuda.amp import GradScaler, autocast
 
-def train(generator, discriminator, train_loader, val_loader, device, num_epochs=10, learning_rate=0.0001, weight_decay=1e-4, checkpoint_path='T3/Frame/ckpt/GAN6.pth', savebest=True):
+def train(generator, discriminator, train_loader, val_loader, device, num_epochs=10, learning_rate=0.0001, weight_decay=1e-4, checkpoint_path='T3/Frame/ckpt/GAN7.pth', savebest=True):
     generator = generator.to(device)
     discriminator = discriminator.to(device)
     
@@ -167,7 +167,7 @@ if __name__ == "__main__":
     generator = ResNetGenerator()
     discriminator = Discriminator()
 
-    batch_size = 60
+    batch_size = 55
     weight_decay = 1e-4
 
     train_file_path = r'T3\Frame\data\patches\train_patches_100\OL_train_100.h5'
@@ -176,6 +176,6 @@ if __name__ == "__main__":
     val_dataset = MyDataset(test_file_path)
 
     train_loader = DataLoader(train_dataset, batch_size=batch_size, num_workers=10, pin_memory=True, shuffle=True)
-    val_loader = DataLoader(val_dataset, batch_size=64, num_workers=10, pin_memory=True, shuffle=False)
+    val_loader = DataLoader(val_dataset, batch_size=32, num_workers=10, pin_memory=True, shuffle=False)
     
     train(generator=generator, discriminator=discriminator, train_loader=train_loader, val_loader=val_loader, num_epochs=num_epochs, learning_rate=lr, weight_decay=weight_decay, device=device)

@@ -9,7 +9,7 @@ from torch.utils.tensorboard import SummaryWriter
 import time
 from torch.cuda.amp import GradScaler, autocast
 
-def train(generator, discriminator, train_loader, val_loader, device, num_epochs=10, learning_rate=0.0001, weight_decay=1e-4, checkpoint_path='T3/Frame/ckpt/GAN7.pth', savebest=True):
+def train(generator, discriminator, train_loader, val_loader, device, num_epochs=10, learning_rate=0.0001, weight_decay=1e-4, checkpoint_path='T3/Frame/ckpt/GAN9.pth', savebest=True):
     generator = generator.to(device)
     discriminator = discriminator.to(device)
     
@@ -19,6 +19,10 @@ def train(generator, discriminator, train_loader, val_loader, device, num_epochs
     scaler_G = GradScaler()
     scaler_D = GradScaler()
     
+    weight_aop = 0.4
+    weight_dolp = 0.4
+    weight_s0 = 0.2
+
     # Loss functions
     adversarial_criterion = nn.BCEWithLogitsLoss().to(device)
     content_criterion = CustomGANLoss().to(device)
@@ -58,17 +62,17 @@ def train(generator, discriminator, train_loader, val_loader, device, num_epochs
                 # Real loss
                 disc_real_outputs = discriminator(aop_true, dolp_true, s0_true)
                 real_labels = torch.ones_like(disc_real_outputs[0]).to(device)
-                loss_D_real = (adversarial_criterion(disc_real_outputs[0], real_labels) +
-                               adversarial_criterion(disc_real_outputs[1], real_labels) +
-                               adversarial_criterion(disc_real_outputs[2], real_labels)) / 3
+                loss_D_real = (weight_aop * (adversarial_criterion(disc_real_outputs[0], real_labels)) +
+                               weight_dolp * (adversarial_criterion(disc_real_outputs[1], real_labels)) +
+                               weight_s0 * (adversarial_criterion(disc_real_outputs[2], real_labels)))
 
                 # Fake loss
                 aop_pred, dolp_pred, s0_pred = generator(inputs)
                 disc_fake_outputs = discriminator(aop_pred.detach(), dolp_pred.detach(), s0_pred.detach())
                 fake_labels = torch.zeros_like(disc_fake_outputs[0]).to(device)
-                loss_D_fake = (adversarial_criterion(disc_fake_outputs[0], fake_labels) +
-                               adversarial_criterion(disc_fake_outputs[1], fake_labels) +
-                               adversarial_criterion(disc_fake_outputs[2], fake_labels)) / 3
+                loss_D_fake = (weight_aop * (adversarial_criterion(disc_fake_outputs[0], fake_labels)) +
+                               weight_dolp * (adversarial_criterion(disc_fake_outputs[1], fake_labels)) +
+                               weight_s0 * (adversarial_criterion(disc_fake_outputs[2], fake_labels)))
                 
                 loss_D = (loss_D_real + loss_D_fake) / 2
 
@@ -89,11 +93,11 @@ def train(generator, discriminator, train_loader, val_loader, device, num_epochs
                 
                 # Adversarial loss
                 disc_outputs = discriminator(aop_pred, dolp_pred, s0_pred)
-                adversarial_loss = (adversarial_criterion(disc_outputs[0], real_labels) +
-                                    adversarial_criterion(disc_outputs[1], real_labels) +
-                                    adversarial_criterion(disc_outputs[2], real_labels)) / 3
+                adversarial_loss = (weight_aop * (adversarial_criterion(disc_outputs[0], real_labels)) +
+                                    weight_dolp * (adversarial_criterion(disc_outputs[1], real_labels)) +
+                                    weight_s0 * (adversarial_criterion(disc_outputs[2], real_labels)))
                 
-                loss_G = content_loss + 1e-3 * adversarial_loss
+                loss_G = content_loss + 1e-2 * adversarial_loss
 
             scaler_G.scale(loss_G).backward()
             scaler_G.step(optimizer_G)
@@ -167,7 +171,7 @@ if __name__ == "__main__":
     generator = ResNetGenerator()
     discriminator = Discriminator()
 
-    batch_size = 55
+    batch_size = 60
     weight_decay = 1e-4
 
     train_file_path = r'T3\Frame\data\patches\train_patches_100\OL_train_100.h5'

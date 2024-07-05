@@ -434,18 +434,18 @@ class ResNetGenerator(nn.Module):
         self.layer1 = nn.Sequential(*resnet_block(64, 64, num_blocks[0], first_block=True))
         self.layer2 = nn.Sequential(*resnet_block(64, 128, num_blocks[1]))
         
-        self.layer3_1 = nn.Sequential(*resnet_block(128, 48, num_blocks[2]))
-        self.layer3_2 = nn.Sequential(*resnet_block(128, 48, num_blocks[2]))
-        self.layer3_3 = nn.Sequential(*resnet_block(128, 48, num_blocks[2]))
+        self.layer3_1 = nn.Sequential(*resnet_block(128, 32, num_blocks[2]))
+        self.layer3_2 = nn.Sequential(*resnet_block(128, 32, num_blocks[2]))
+        self.layer3_3 = nn.Sequential(*resnet_block(128, 32, num_blocks[2]))
         
         # Output layer
         # Depthwise separable convolution
-        self.conv1_1 = nn.Conv2d(48, 48, kernel_size=3, stride=1, padding=1, groups=48)
-        self.conv1_2 = nn.Conv2d(48, 48, kernel_size=3, stride=1, padding=1, groups=48)
-        self.conv1_3 = nn.Conv2d(48, 48, kernel_size=3, stride=1, padding=1, groups=48)
-        self.conv2_1 = nn.Conv2d(48, 1, kernel_size=1, stride=1, padding=0)
-        self.conv2_2 = nn.Conv2d(48, 1, kernel_size=1, stride=1, padding=0)
-        self.conv2_3 = nn.Conv2d(48, 1, kernel_size=1, stride=1, padding=0)
+        self.conv1_1 = nn.Conv2d(32, 32, kernel_size=3, stride=1, padding=1, groups=32)
+        self.conv1_2 = nn.Conv2d(32, 32, kernel_size=3, stride=1, padding=1, groups=32)
+        self.conv1_3 = nn.Conv2d(32, 32, kernel_size=3, stride=1, padding=1, groups=32)
+        self.conv2_1 = nn.Conv2d(32, 1, kernel_size=1, stride=1, padding=0)
+        self.conv2_2 = nn.Conv2d(32, 1, kernel_size=1, stride=1, padding=0)
+        self.conv2_3 = nn.Conv2d(32, 1, kernel_size=1, stride=1, padding=0)
         
     def forward(self, x):
         x = self.conv1(x)

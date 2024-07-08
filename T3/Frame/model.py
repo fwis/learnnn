@@ -513,6 +513,11 @@ class CustomGANLoss(nn.Module):
         self.l1_loss = nn.L1Loss()
 
     def forward(self, s0_pred, s0_true, dolp_pred, dolp_true, aop_pred, aop_true):
+        # L1 loss
+        loss_s0 = self.l1_loss(s0_pred, s0_true)
+        loss_dolp = self.l1_loss(dolp_pred, dolp_true)
+        loss_aop = self.l1_loss(aop_pred, aop_true)
+        
         # Physics informed loss        
         Q_pred = dolp_pred * s0_pred * torch.cos(2 * aop_pred)
         U_pred = dolp_pred * s0_pred * torch.sin(2 * aop_pred)
@@ -521,14 +526,11 @@ class CustomGANLoss(nn.Module):
         loss_Q = torch.mean(abs(Q_pred - Q_true))
         loss_U = torch.mean(abs(U_pred - U_true))
         physics_loss = loss_Q + loss_U
-        # L1 loss
-        loss_s0 = self.l1_loss(s0_pred, s0_true)
-        loss_dolp = self.l1_loss(dolp_pred, dolp_true)
-        loss_aop = self.l1_loss(aop_pred, aop_true)
+
         # Total loss
-        total_loss  = torch.mean(0.1 * loss_s0 + 
-                      0.6 * loss_dolp + 
-                      0.3 * loss_aop) - 0.02 * SSIM(aop_pred,aop_true, data_range= math.pi/2) + physics_loss
+        total_loss  = (0.1 * loss_s0 + 0.6 * loss_dolp + 0.3 * loss_aop)\
+                    - 0.02 * SSIM(aop_pred,aop_true, data_range= math.pi/2)\
+                    + physics_loss
         
         return total_loss
 

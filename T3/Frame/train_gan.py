@@ -9,7 +9,7 @@ from torch.utils.tensorboard import SummaryWriter
 import time
 from torch.cuda.amp import GradScaler, autocast
 
-def train(generator, discriminator, train_loader, val_loader, device, num_epochs=10, learning_rate=0.0001, weight_decay=1e-4, checkpoint_path='T3/Frame/ckpt/GAN9.pth', savebest=True):
+def train(generator, discriminator, train_loader, val_loader, device, num_epochs=10, learning_rate=0.0001, weight_decay=1e-4, checkpoint_path='T3/Frame/ckpt/GAN10.pth', savebest=True):
     generator = generator.to(device)
     discriminator = discriminator.to(device)
     
@@ -20,8 +20,8 @@ def train(generator, discriminator, train_loader, val_loader, device, num_epochs
     scaler_D = GradScaler()
     
     weight_aop = 0.4
-    weight_dolp = 0.4
-    weight_s0 = 0.2
+    weight_dolp = 0.5
+    weight_s0 = 0.1
 
     # Loss functions
     adversarial_criterion = nn.BCEWithLogitsLoss().to(device)

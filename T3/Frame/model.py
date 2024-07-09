@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torchvision.models as models
 import torch.nn.functional as F
 import torchvision.transforms.functional as TF
 import torch.optim as optim
@@ -534,7 +535,21 @@ class CustomGANLoss(nn.Module):
         
         return total_loss
 
+class PerceptualLoss(nn.Module):
+    def __init__(self, feature_layer=34):
+        super(PerceptualLoss, self).__init__()
+        vgg = models.vgg19(pretrained=True).features
+        self.features = nn.Sequential(*list(vgg.children())[:feature_layer]).eval()
+        for param in self.features.parameters():
+            param.requires_grad = False
+        self.criterion = nn.MSELoss()
 
+    def forward(self, input, target):
+        input_features = self.features(input)
+        target_features = self.features(target)
+        loss = self.criterion(input_features, target_features)
+        return loss
+    
 # ESRGAN
 class ResidualDenseBlock_5C(nn.Module):
     def __init__(self, nf=64, gc=32, bias=True):

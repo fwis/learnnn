@@ -9,7 +9,7 @@ from torch.utils.tensorboard import SummaryWriter
 import time
 from torch.cuda.amp import GradScaler, autocast
 
-def train(generator, discriminator, train_loader, val_loader, device, num_epochs=10, learning_rate=0.0001, weight_decay=1e-4, checkpoint_path='T3/Frame/ckpt/GAN10.pth', savebest=True):
+def train(generator, discriminator, train_loader, val_loader, device, num_epochs=10, learning_rate=0.0001, weight_decay=1e-4, checkpoint_path='T3/Frame/ckpt/GAN11.pth', savebest=True):
     generator = generator.to(device)
     discriminator = discriminator.to(device)
     
@@ -19,9 +19,9 @@ def train(generator, discriminator, train_loader, val_loader, device, num_epochs
     scaler_G = GradScaler()
     scaler_D = GradScaler()
     
-    weight_aop = 0.4
-    weight_dolp = 0.5
-    weight_s0 = 0.1
+    weight_aop = 1
+    weight_dolp = 1
+    weight_s0 = 1
 
     # Loss functions
     adversarial_criterion = nn.BCEWithLogitsLoss().to(device)
@@ -64,7 +64,7 @@ def train(generator, discriminator, train_loader, val_loader, device, num_epochs
                 real_labels = torch.ones_like(disc_real_outputs[0]).to(device)
                 loss_D_real = (weight_aop * (adversarial_criterion(disc_real_outputs[0], real_labels)) +
                                weight_dolp * (adversarial_criterion(disc_real_outputs[1], real_labels)) +
-                               weight_s0 * (adversarial_criterion(disc_real_outputs[2], real_labels)))
+                               weight_s0 * (adversarial_criterion(disc_real_outputs[2], real_labels)))/3
 
                 # Fake loss
                 aop_pred, dolp_pred, s0_pred = generator(inputs)
@@ -72,7 +72,7 @@ def train(generator, discriminator, train_loader, val_loader, device, num_epochs
                 fake_labels = torch.zeros_like(disc_fake_outputs[0]).to(device)
                 loss_D_fake = (weight_aop * (adversarial_criterion(disc_fake_outputs[0], fake_labels)) +
                                weight_dolp * (adversarial_criterion(disc_fake_outputs[1], fake_labels)) +
-                               weight_s0 * (adversarial_criterion(disc_fake_outputs[2], fake_labels)))
+                               weight_s0 * (adversarial_criterion(disc_fake_outputs[2], fake_labels)))/3
                 
                 loss_D = (loss_D_real + loss_D_fake) / 2
 
@@ -95,9 +95,9 @@ def train(generator, discriminator, train_loader, val_loader, device, num_epochs
                 disc_outputs = discriminator(aop_pred, dolp_pred, s0_pred)
                 adversarial_loss = (weight_aop * (adversarial_criterion(disc_outputs[0], real_labels)) +
                                     weight_dolp * (adversarial_criterion(disc_outputs[1], real_labels)) +
-                                    weight_s0 * (adversarial_criterion(disc_outputs[2], real_labels)))
+                                    weight_s0 * (adversarial_criterion(disc_outputs[2], real_labels)))/3
                 
-                loss_G = content_loss + 1e-2 * adversarial_loss
+                loss_G = content_loss + 1.2e-2 * adversarial_loss
 
             scaler_G.scale(loss_G).backward()
             scaler_G.step(optimizer_G)
@@ -116,7 +116,6 @@ def train(generator, discriminator, train_loader, val_loader, device, num_epochs
         
         avg_loss_G = train_loss_G / len(train_loader)
         avg_loss_D = train_loss_D / len(train_loader)
-        writer.add_scalars('Loss', {'Generator loss': avg_loss_G, 'Discriminator loss': avg_loss_D}, global_step=epoch + 1)
         torch.cuda.empty_cache()
         
         # Validation
@@ -135,7 +134,8 @@ def train(generator, discriminator, train_loader, val_loader, device, num_epochs
         
         val_loss /= len(val_loader)
         print(f'Epoch {epoch + 1}, Validation Loss: {val_loss:.4f}')
-        writer.add_scalar('Validation Loss', val_loss, epoch + 1)
+        writer.add_scalars('Loss', {'Generator loss': avg_loss_G, 'Discriminator loss': avg_loss_D, 
+                                    'Validation Loss':val_loss}, global_step=epoch + 1)
         
         torch.cuda.empty_cache()
 

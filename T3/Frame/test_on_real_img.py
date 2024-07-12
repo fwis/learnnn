@@ -19,7 +19,7 @@ model = ResNetGenerator()
 # model = ResNetFPN()
 
 # Load checkpoint
-checkpoint_path = 'T3\Frame\ckpt\GAN10_best.pth'
+checkpoint_path = 'T3\Frame\ckpt\GAN12_best.pth'
 checkpoint = torch.load(checkpoint_path)
 model.load_state_dict(checkpoint['generator_state_dict'])
 model = model.to(device)

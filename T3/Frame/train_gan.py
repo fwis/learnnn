@@ -4,12 +4,12 @@ import torch.optim as optim
 from torch.utils.data import DataLoader, Dataset, random_split, ConcatDataset
 from torch.optim.lr_scheduler import ExponentialLR
 import os
-from model import MyDataset, ResNetGenerator, Discriminator, CustomGANLoss, custom_transform
+from model import MyDataset, ResNetGenerator, Discriminator, CustomContentLoss, custom_transform, PerceptualLoss
 from torch.utils.tensorboard import SummaryWriter
 import time
 from torch.cuda.amp import GradScaler, autocast
 
-def train(generator, discriminator, train_loader, val_loader, device, num_epochs=10, learning_rate=0.0001, weight_decay=1e-4, checkpoint_path='T3/Frame/ckpt/GAN11.pth', savebest=True):
+def train(generator, discriminator, train_loader, val_loader, device, num_epochs, learning_rate=0.0001, weight_decay=1e-4, checkpoint_path='T3/Frame/ckpt/GAN12.pth', savebest=True):
     generator = generator.to(device)
     discriminator = discriminator.to(device)
     
@@ -25,7 +25,8 @@ def train(generator, discriminator, train_loader, val_loader, device, num_epochs
 
     # Loss functions
     adversarial_criterion = nn.BCEWithLogitsLoss().to(device)
-    content_criterion = CustomGANLoss().to(device)
+    content_criterion = CustomContentLoss().to(device)
+    perceptual_criterion = PerceptualLoss().to(device)
     
     # TensorBoard
     log_dir = "T3/Frame/logs/fit/" + time.strftime("%Y%m%d-%H%M%S")
@@ -89,16 +90,18 @@ def train(generator, discriminator, train_loader, val_loader, device, num_epochs
                 aop_pred, dolp_pred, s0_pred = generator(inputs)
                 
                 # Content loss
-                content_loss = content_criterion(s0_pred, s0_true, dolp_pred, dolp_true, aop_pred, aop_true)
-                
+                content_loss = content_criterion(s0_pred, s0_true, dolp_pred, dolp_true, aop_pred, aop_true)                
                 # Adversarial loss
                 disc_outputs = discriminator(aop_pred, dolp_pred, s0_pred)
                 adversarial_loss = (weight_aop * (adversarial_criterion(disc_outputs[0], real_labels)) +
                                     weight_dolp * (adversarial_criterion(disc_outputs[1], real_labels)) +
                                     weight_s0 * (adversarial_criterion(disc_outputs[2], real_labels)))/3
-                
-                loss_G = content_loss + 1.2e-2 * adversarial_loss
-
+                #Perceptual loss
+                perceptual_loss = (perceptual_criterion(aop_pred,aop_true) + 
+                                   perceptual_criterion(dolp_pred,dolp_true) + 
+                                   perceptual_criterion(s0_pred,s0_true))/3
+                loss_G = content_loss + 1.2e-2 * adversarial_loss + 8e-4 * perceptual_loss
+              
             scaler_G.scale(loss_G).backward()
             scaler_G.step(optimizer_G)
             scaler_G.update()
@@ -116,6 +119,7 @@ def train(generator, discriminator, train_loader, val_loader, device, num_epochs
         
         avg_loss_G = train_loss_G / len(train_loader)
         avg_loss_D = train_loss_D / len(train_loader)
+        writer.add_scalars('Loss', {'Generator loss': avg_loss_G, 'Discriminator loss': avg_loss_D}, global_step=epoch + 1)
         torch.cuda.empty_cache()
         
         # Validation
@@ -134,8 +138,7 @@ def train(generator, discriminator, train_loader, val_loader, device, num_epochs
         
         val_loss /= len(val_loader)
         print(f'Epoch {epoch + 1}, Validation Loss: {val_loss:.4f}')
-        writer.add_scalars('Loss', {'Generator loss': avg_loss_G, 'Discriminator loss': avg_loss_D, 
-                                    'Validation Loss':val_loss}, global_step=epoch + 1)
+        writer.add_scalar('Validation Loss', val_loss, epoch + 1)
         
         torch.cuda.empty_cache()
 

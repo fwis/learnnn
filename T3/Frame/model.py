@@ -3,6 +3,7 @@ import torch.nn as nn
 import torchvision.models as models
 import torch.nn.functional as F
 import torchvision.transforms.functional as TF
+from torchvision.transforms import Normalize
 import torch.optim as optim
 from torch.utils.data import DataLoader, Dataset
 from timm.models.layers import trunc_normal_, DropPath
@@ -478,9 +479,7 @@ class Discriminator(nn.Module):
             nn.Conv2d(1, 64, kernel_size=5, stride=1, padding=2),
             nn.LeakyReLU(0.2, inplace=True),
             nn.Conv2d(64, 256, kernel_size=3, stride=1, padding=1),
-            nn.LeakyReLU(0.2, inplace=True),
-            # nn.Conv2d(128, 256, kernel_size=3, stride=1, padding=1),
-            # nn.LeakyReLU(0.2, inplace=True)
+            nn.LeakyReLU(0.2, inplace=True)
         )
         
         # Branches for aop, dolp, s0
@@ -508,9 +507,9 @@ class Discriminator(nn.Module):
 
 
 # Loss
-class CustomGANLoss(nn.Module):
+class CustomContentLoss(nn.Module):
     def __init__(self):
-        super(CustomGANLoss, self).__init__()
+        super(CustomContentLoss, self).__init__()
         self.l1_loss = nn.L1Loss()
 
     def forward(self, s0_pred, s0_true, dolp_pred, dolp_true, aop_pred, aop_true):
@@ -536,15 +535,20 @@ class CustomGANLoss(nn.Module):
         return total_loss
 
 class PerceptualLoss(nn.Module):
-    def __init__(self, feature_layer=34):
+    def __init__(self, feature_layer=19):
         super(PerceptualLoss, self).__init__()
         vgg = models.vgg19(pretrained=True).features
         self.features = nn.Sequential(*list(vgg.children())[:feature_layer]).eval()
         for param in self.features.parameters():
             param.requires_grad = False
         self.criterion = nn.MSELoss()
+        self.normalize = Normalize(mean=[0.485], std=[0.229])
 
     def forward(self, input, target):
+        input = self.normalize(input)
+        input = input.repeat(1, 3, 1, 1)
+        target = self.normalize(target)
+        target = target.repeat(1, 3, 1, 1)
         input_features = self.features(input)
         target_features = self.features(target)
         loss = self.criterion(input_features, target_features)

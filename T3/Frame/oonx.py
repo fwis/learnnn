@@ -1,12 +1,12 @@
 import torch
 from model import ForkNet, ResNet, ConvNeXtNet
  
-model = ConvNeXtNet()
-checkpoint = torch.load(r'T3\Frame\ckpt\ConvNeXtNet1.pth')
+model = ResNet()
+checkpoint = torch.load(r'T3\Frame\ckpt\ResNet6.pth')
 model.eval()
 dummy_input = torch.randn(1, 1, 100, 100)
 
-torch.onnx.export(model, dummy_input, r'T3\Frame\ckpt\ConvNeXtNet1.onnx',verbose=True)
+torch.onnx.export(model, dummy_input, r'T3\Frame\ckpt\ResNet6.onnx',verbose=True)
 
 # 多输入,opset_version根据torch的版本决定，转onnx的时候提示的
 # torch.onnx.export(model, [dummy_input,dummy_input_2], 'name.onnx',verbose=True,opset_version=9/10/11)

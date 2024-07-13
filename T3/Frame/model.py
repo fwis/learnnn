@@ -542,12 +542,12 @@ class PerceptualLoss(nn.Module):
         for param in self.features.parameters():
             param.requires_grad = False
         self.criterion = nn.MSELoss()
-        self.normalize = Normalize(mean=[0.485], std=[0.229])
+        # self.normalize = Normalize(mean=[0.485], std=[0.229])
 
     def forward(self, input, target):
-        input = self.normalize(input)
+        # input = self.normalize(input)
         input = input.repeat(1, 3, 1, 1)
-        target = self.normalize(target)
+        # target = self.normalize(target)
         target = target.repeat(1, 3, 1, 1)
         input_features = self.features(input)
         target_features = self.features(target)

@@ -9,7 +9,7 @@ from torch.utils.tensorboard import SummaryWriter
 import time
 from torch.cuda.amp import GradScaler, autocast
 
-def train(generator, discriminator, train_loader, val_loader, device, num_epochs, learning_rate=0.0001, weight_decay=1e-4, checkpoint_path='T3/Frame/ckpt/GAN12.pth', savebest=True):
+def train(generator, discriminator, train_loader, val_loader, device, num_epochs, learning_rate=0.0001, weight_decay=1e-4, checkpoint_path='T3/Frame/ckpt/GAN13.pth', savebest=True):
     generator = generator.to(device)
     discriminator = discriminator.to(device)
     
@@ -58,7 +58,6 @@ def train(generator, discriminator, train_loader, val_loader, device, num_epochs
             
             # Update discriminator
             optimizer_D.zero_grad()
-            
             with autocast():
                 # Real loss
                 disc_real_outputs = discriminator(aop_true, dolp_true, s0_true)
@@ -85,10 +84,8 @@ def train(generator, discriminator, train_loader, val_loader, device, num_epochs
             
             # Update generator
             optimizer_G.zero_grad()
-            
             with autocast():
                 aop_pred, dolp_pred, s0_pred = generator(inputs)
-                
                 # Content loss
                 content_loss = content_criterion(s0_pred, s0_true, dolp_pred, dolp_true, aop_pred, aop_true)                
                 # Adversarial loss
@@ -100,7 +97,7 @@ def train(generator, discriminator, train_loader, val_loader, device, num_epochs
                 perceptual_loss = (perceptual_criterion(aop_pred,aop_true) + 
                                    perceptual_criterion(dolp_pred,dolp_true) + 
                                    perceptual_criterion(s0_pred,s0_true))/3
-                loss_G = content_loss + 1.2e-2 * adversarial_loss + 8e-4 * perceptual_loss
+                loss_G = content_loss + 1e-2 * adversarial_loss + 5e-4 * perceptual_loss
               
             scaler_G.scale(loss_G).backward()
             scaler_G.step(optimizer_G)

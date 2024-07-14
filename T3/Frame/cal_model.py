@@ -158,27 +158,26 @@ class CustomLoss(nn.Module):
     def __init__(self, weight=1):
         super(CustomLoss, self).__init__()
         self.weight = weight
+        self.mse = nn.MSELoss()
         
     def forward(self, i0_pred, i0_true, i45_pred, i45_true, i90_pred, i90_true, i135_pred, i135_true):
         # Physics informed loss
-        s0_pred = (i0_pred + i45_pred + i90_pred + i135_pred) / 2
-        s0_true = (i0_true + i45_true + i90_true + i135_true) / 2
-        dolp_pred = dolp(i0_pred, i45_pred, i90_pred, i135_pred)
-        dolp_true = dolp(i0_true, i45_true, i90_true, i135_true)
-        aop_pred = aop(i0_pred, i45_pred, i90_pred, i135_pred)
-        aop_true = aop(i0_true, i45_true, i90_true, i135_true)      
-        Q_pred = dolp_pred * s0_pred * torch.cos(2 * aop_pred)
-        U_pred = dolp_pred * s0_pred * torch.sin(2 * aop_pred)
-        Q_true = dolp_true * s0_true * torch.cos(2 * aop_true)
-        U_true = dolp_true * s0_true * torch.sin(2 * aop_true)        
-        loss_Q = torch.mean(abs(Q_pred - Q_true))
-        loss_U = torch.mean(abs(U_pred - U_true))
-        physics_loss = loss_Q + loss_U
+        # s0_pred = (i0_pred + i45_pred + i90_pred + i135_pred) / 2
+        # s0_true = (i0_true + i45_true + i90_true + i135_true) / 2
+        # print('s0',torch.mean(abs(s0_true - s0_pred)))
+        # dolp_pred = torch.sqrt(torch.square(torch.abs(i0_pred - i90_pred)) + torch.square(torch.abs(i45_pred - i135_pred))) / (s0_pred + 1e-8)
+        # dolp_true = torch.sqrt(torch.square(torch.abs(i0_true - i90_true)) + torch.square(torch.abs(i45_true - i135_true))) / (s0_true + 1e-8)
+        # print('dolp',torch.mean(abs(dolp_true - dolp_pred)))
+        # aop_pred = 0.5 * torch.arctan(torch.abs(i45_pred - i135_pred) / (torch.abs(i0_pred - i90_pred) + 1e-8)) + math.pi/4.
+        # aop_true = 0.5 * torch.arctan((i45_true - i135_true) / (i0_true - i90_true + 1e-8)) + math.pi/4.
+        # print('aop',torch.mean(abs(aop_true - aop_pred)))
     
         # Total loss
-        total_loss  = torch.mean(0.1 * abs(s0_true - s0_pred) + 
-                      0.6 * abs(dolp_true - dolp_pred) + 
-                      0.3 * abs(aop_true - aop_pred))  + physics_loss - 0.02 * SSIM(aop_pred,aop_true, data_range= math.pi/2)
+        total_loss  = torch.mean(self.mse(i0_pred, i0_true) + self.mse(i45_pred,i45_true) + 
+                                self.mse(i90_pred,i90_true) + self.mse(i135_pred,i135_true))
+                    #   0.6 * abs(dolp_true - dolp_pred) + 
+                    #   0.3 * abs(aop_true - aop_pred)) 
+        # + physics_loss
 
         return total_loss
 
@@ -202,33 +201,3 @@ class PerceptualLoss(nn.Module):
         loss = self.criterion(input_features, target_features)
         return loss
     
-    '''
-Calculate the AoP
-'''
-def aop(x_0, x_45, x_90, x_135, normalization = False):
-    AoP = 0.5 * np.arctan((x_45 - x_135) / (x_0 - x_90 + 1e-8)) + math.pi/4.
-    if normalization:
-        AoP = normalize(AoP,0,1)
-
-    return AoP
-
-'''
-Calculate the DoLP
-'''
-def dolp(x_0, x_45, x_90, x_135, normalization = False):
-    Int = 0.5*(x_0 + x_45 + x_90 + x_135)   
-    DoLP = np.sqrt(np.square(x_0-x_90) + np.square(x_45-x_135))/(Int+1e-8)
-    DoLP[np.where(Int==0)] = 0   #if Int==0, set the DoLP to 0
-    if normalization:
-        DoLP = normalize(DoLP,0,1)
-    
-    return DoLP
-
-def normalize(data, lower, upper):
-    mx = np.max(data)
-    mn = np.min(data)
-    if mx==mn:
-        norm_data = np.zeros(data.shape)
-    else:  
-        norm_data = (upper-lower)*(data - mn) / (mx - mn) + lower
-    return norm_data

@@ -52,7 +52,7 @@ def train(model, train_loader, val_loader, device, num_epochs=10, learning_rate=
             running_loss += loss.item()
             train_loss += loss.item()
             
-            if i % 50 == 49:
+            if i % 100 == 99:
                 print(f'[Epoch {epoch + 1}, Batch {i + 1}] Train loss: {running_loss / 50:.4f}')
                 running_loss = 0.0
                 
@@ -67,7 +67,7 @@ def train(model, train_loader, val_loader, device, num_epochs=10, learning_rate=
         model.eval()
         val_loss = 0.0
         with torch.no_grad():
-            for data, aop, dolp, s0 in val_loader:
+            for data, i0, i45, i90, i135 in val_loader:
                 inputs = data.to(device)
                 i0_true = i0.to(device)
                 i45_true = i45.to(device)
@@ -116,36 +116,10 @@ if __name__ == "__main__":
     batch_size = 60
     weight_decay = 1e-4
     
-    train_file_path = r'T3\Frame\data\patches\train_patches_100\OL_train_100.h5'
-    test_file_path = r'T3\Frame\data\patches\test_patches_100\OL_test_100.h5'
+    train_file_path = r'T3\Frame\data\patches\sr_train\OL_sr_train.h5'
+    test_file_path = r'T3\Frame\data\patches\sr_test\OL_sr_test.h5'
     train_dataset = MyDataset(train_file_path, transform=custom_transform)
     val_dataset = MyDataset(test_file_path)
-    
-    # train_file_path1 = r"T3\Frame\data\patches\train_patches_100\OL_train_100.h5"
-    # train_file_path2 = r"T3\Frame\data\patches\train_patches_100\Fork_train_100.h5"
-    # train_file_path3 = r"T3\Frame\data\patches\train_patches_100\pid_train_100.h5"
-    # train_file_path4 = r"T3\Frame\data\patches\train_patches_100\PIF_train_100.h5"
-    # train_file_path5 = r"T3\Frame\data\patches\train_patches_100\tokyo_train_100.h5"
-    
-    # test_file_path1 = r'T3\Frame\data\patches\test_patches_100\OL_test_100.h5'
-    # test_file_path2 = r"T3\Frame\data\patches\test_patches_100\Fork_test_100.h5"
-    # test_file_path3 = r"T3\Frame\data\patches\test_patches_100\pid_test_100.h5"
-    # test_file_path4 = r"T3\Frame\data\patches\test_patches_100\PIF_test_100.h5"
-    # test_file_path5 = r"T3\Frame\data\patches\test_patches_100\tokyo_test_100.h5"
-
-    # train_dataset1 = MyDataset(file_path=train_file_path1, transform=custom_transform)
-    # val_dataset1 = MyDataset(file_path=test_file_path1, transform=None)
-    # train_dataset2 = MyDataset(file_path=train_file_path2, transform=custom_transform)
-    # val_dataset2 = MyDataset(file_path=test_file_path2, transform=None)
-    # train_dataset3 = MyDataset(file_path=train_file_path3, transform=custom_transform)
-    # val_dataset3 = MyDataset(file_path=test_file_path3, transform=None)
-    # train_dataset4 = MyDataset(file_path=train_file_path4, transform=custom_transform)
-    # val_dataset4 = MyDataset(file_path=test_file_path4, transform=None)
-    # train_dataset5 = MyDataset(file_path=train_file_path5, transform=custom_transform)
-    # val_dataset5 = MyDataset(file_path=test_file_path5, transform=None)
-    
-    # train_dataset = ConcatDataset([train_dataset1,train_dataset2,train_dataset3,train_dataset4,train_dataset5])
-    # val_dataset = ConcatDataset([val_dataset1,val_dataset2,val_dataset3,val_dataset4,val_dataset5])
     
     # Create DataLoader
     train_loader = DataLoader(train_dataset, batch_size=batch_size, num_workers=10, pin_memory=True, shuffle=True)

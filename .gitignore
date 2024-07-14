@@ -19,3 +19,13 @@ T3/Frame/data/patches/test_patches_100/Fork_test_100.h5
 T3/Frame/data/patches/test_patches_100/pid_test_100.h5
 T3/Frame/data/patches/test_patches_100/PIF_test_100.h5
 T3/Frame/data/patches/test_patches_100/tokyo_test_100.h5
+T3/Frame/data/patches/sr_test/Fork_sr_test.h5
+T3/Frame/data/patches/sr_test/OL_sr_test.h5
+T3/Frame/data/patches/sr_test/pid_sr_test.h5
+T3/Frame/data/patches/sr_test/PIF_sr_test.h5
+T3/Frame/data/patches/sr_test/tokyo_sr_test.h5
+T3/Frame/data/patches/sr_train/Fork_sr_train.h5
+T3/Frame/data/patches/sr_train/OL_sr_train.h5
+T3/Frame/data/patches/sr_train/pid_sr_train.h5
+T3/Frame/data/patches/sr_train/PIF_sr_train.h5
+T3/Frame/data/patches/sr_train/tokyo_sr_train.h5

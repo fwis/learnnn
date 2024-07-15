@@ -10,13 +10,14 @@ import time
 from torch.cuda.amp import GradScaler, autocast
 
 
-def train(model, train_loader, val_loader, device, num_epochs=10, learning_rate=0.001, weight_decay=1e-4, checkpoint_path='T3/Frame/ckpt/ResNet_cal_1.pth', savebest=True):
+def train(model, train_loader, val_loader, device, num_epochs=10, learning_rate=0.001, weight_decay=1e-4, checkpoint_path='T3/Frame/ckpt/ResNet_cal_4.pth', savebest=True):
     # Model, criterion and optimizer
     model = model.to(device)
-    # criterion = CustomLoss().to(device)
     criterion = CustomLoss().to(device)
+    perceptual_criterion = PerceptualLoss().to(device)
     optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
-    scaler = GradScaler()  # Initialize gradient scaler for mixed precision training
+    # Initialize gradient scaler for mixed precision training
+    scaler = GradScaler()
     log_dir = "T3/Frame/logs/fit/" + time.strftime("%Y%m%d-%H%M%S")
     writer = SummaryWriter(log_dir)
     
@@ -41,13 +42,16 @@ def train(model, train_loader, val_loader, device, num_epochs=10, learning_rate=
             
             optimizer.zero_grad()
             
-            with autocast():  # Enable autocast for mixed precision training
+            with autocast(): 
                 i0_pred, i45_pred, i90_pred, i135_pred = model(inputs)
                 loss = criterion(i0_pred, i0_true, i45_pred, i45_true, i90_pred, i90_true, i135_pred, i135_true)
-
-            scaler.scale(loss).backward()  # Scale loss for mixed precision
-            scaler.step(optimizer)  # Step the optimizer
-            scaler.update()  # Update the scale for next iteration
+                perceptual_loss = (perceptual_criterion(i0_pred, i0_true) + perceptual_criterion(i0_pred, i0_true) +
+                                    perceptual_criterion(i0_pred, i0_true) + perceptual_criterion(i0_pred, i0_true))
+                loss = loss + 1e-2 * perceptual_loss
+                # print('p',perceptual_loss)
+            scaler.scale(loss).backward()
+            scaler.step(optimizer)
+            scaler.update()
             
             running_loss += loss.item()
             train_loss += loss.item()

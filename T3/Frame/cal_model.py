@@ -159,14 +159,18 @@ class CustomLoss(nn.Module):
         super(CustomLoss, self).__init__()
         self.weight = weight
         self.mse = nn.MSELoss()
+        self.L1 = nn.L1Loss()
         
     def forward(self, i0_pred, i0_true, i45_pred, i45_true, i90_pred, i90_true, i135_pred, i135_true):
         # Physics informed loss
-        # s0_pred = (i0_pred + i45_pred + i90_pred + i135_pred) / 2
-        # s0_true = (i0_true + i45_true + i90_true + i135_true) / 2
-        # print('s0',torch.mean(abs(s0_true - s0_pred)))
-        # dolp_pred = torch.sqrt(torch.square(torch.abs(i0_pred - i90_pred)) + torch.square(torch.abs(i45_pred - i135_pred))) / (s0_pred + 1e-8)
-        # dolp_true = torch.sqrt(torch.square(torch.abs(i0_true - i90_true)) + torch.square(torch.abs(i45_true - i135_true))) / (s0_true + 1e-8)
+        s0_pred = (i0_pred + i45_pred + i90_pred + i135_pred) / 2
+        s0_true = (i0_true + i45_true + i90_true + i135_true) / 2
+        s0_loss = self.mse(s0_pred,s0_true)
+        # print('s0',s0_loss)
+        dolp_pred = torch.mean(torch.sqrt(torch.square(i0_pred - i90_pred) + torch.square(i45_pred - i135_pred)) / (torch.mean(s0_pred) + 1e-8))
+        dolp_true = torch.mean(torch.sqrt(torch.square(i0_true - i90_true) + torch.square(i45_true - i135_true)) / (torch.mean(s0_true) + 1e-8))
+        dolp_loss = self.L1(dolp_pred,dolp_true)
+        # print('dolp',dolp_loss)
         # print('dolp',torch.mean(abs(dolp_true - dolp_pred)))
         # aop_pred = 0.5 * torch.arctan(torch.abs(i45_pred - i135_pred) / (torch.abs(i0_pred - i90_pred) + 1e-8)) + math.pi/4.
         # aop_true = 0.5 * torch.arctan((i45_true - i135_true) / (i0_true - i90_true + 1e-8)) + math.pi/4.
@@ -174,11 +178,10 @@ class CustomLoss(nn.Module):
     
         # Total loss
         total_loss  = torch.mean(self.mse(i0_pred, i0_true) + self.mse(i45_pred,i45_true) + 
-                                self.mse(i90_pred,i90_true) + self.mse(i135_pred,i135_true))
+                                self.mse(i90_pred,i90_true) + self.mse(i135_pred,i135_true))/4 + s0_loss + dolp_loss
                     #   0.6 * abs(dolp_true - dolp_pred) + 
                     #   0.3 * abs(aop_true - aop_pred)) 
-        # + physics_loss
-
+        # print(total_loss)
         return total_loss
 
 class PerceptualLoss(nn.Module):

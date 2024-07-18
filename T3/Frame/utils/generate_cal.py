@@ -195,10 +195,10 @@ def slice_and_save_to_h5(dofp_tensor, i0_tensor, i45_tensor, i90_tensor, i135_te
     print('Finished!')
             
             
-root_path = r'D:\WORKS\dataset\data_train\OL_DATA'
-label_path = r'D:\WORKS\dataset\patches\100_train.h5'
+root_path = r'D:\WORKS\dataset\data_test\Fork_test'
+label_path = r'D:\WORKS\dataset\patches\sr_test\Fork_sr_test.h5'
 dofp_tensor, i0_tensor, i45_tensor, i90_tensor, i135_tensor = create_labels(root_path)
 patch_size = 100
-coincide = 20
+coincide = 10
 stride = patch_size - coincide
 slice_and_save_to_h5(dofp_tensor, i0_tensor, i45_tensor, i90_tensor, i135_tensor, label_path, patch_size, stride, slice=True)

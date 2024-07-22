@@ -10,7 +10,7 @@ import time
 from torch.cuda.amp import GradScaler, autocast
 
 
-def train(model, train_loader, val_loader, device, num_epochs=10, learning_rate=0.001, weight_decay=1e-4, checkpoint_path='T3/Frame/ckpt/ForkNet11.pth', savebest=True):
+def train(model, train_loader, val_loader, device, num_epochs=10, learning_rate=0.001, weight_decay=1e-4, checkpoint_path='T3/Frame/ckpt/ForkNet_OL.pth', savebest=True):
     # Model, criterion and optimizer
     model = model.to(device)
     # criterion = CustomLoss().to(device)
@@ -51,7 +51,7 @@ def train(model, train_loader, val_loader, device, num_epochs=10, learning_rate=
             running_loss += loss.item()
             train_loss += loss.item()
             
-            if i % 50 == 49:
+            if i % 100 == 99:
                 print(f'[Epoch {epoch + 1}, Batch {i + 1}] Train loss: {running_loss / 50:.4f}')
                 running_loss = 0.0
                 
@@ -114,10 +114,10 @@ if __name__ == "__main__":
     # model = ResNet()
     # model = ResNetFPN()
     # model = ConvNeXtNet()
-    batch_size = 96
+    batch_size = 64
     weight_decay = 1e-4
     
-    train_file_path = r'T3\Frame\data\patches\train_patches_100\OL_train_100.h5'
+    train_file_path = r'T3\Frame\data\patches\train_patches_100\OL_train_100_1.h5'
     test_file_path = r'T3\Frame\data\patches\test_patches_100\OL_test_100.h5'
     train_dataset = MyDataset(train_file_path, transform=custom_transform)
     val_dataset = MyDataset(test_file_path)

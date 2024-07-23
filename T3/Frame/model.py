@@ -21,10 +21,6 @@ class ForkNet(nn.Module):
     def __init__(self, padding='same'):
         super(ForkNet, self).__init__()
         self.padding = 'same'
-        # if padding.lower() == 'valid':
-        #     self.padding = 0
-        # else:
-        #     self.padding = 1
 
         self.conv1 = nn.Conv2d(1, 96, kernel_size=5, padding=self.padding)
         self.conv2 = nn.Conv2d(96, 48, kernel_size=3, padding=self.padding)
@@ -57,13 +53,13 @@ class ForkNet(nn.Module):
 class ForkLoss(nn.Module):
     def __init__(self, weight=1):
         super(ForkLoss, self).__init__()
-        self.weight = weight
+        self.l1 = nn.L1Loss()
         
     def forward(self, s0_pred, s0_true, dolp_pred, dolp_true, aop_pred, aop_true):
         # Total loss
-        total_loss  = torch.mean(0.1 * abs(s0_true - s0_pred) + 
-                      abs(dolp_true - dolp_pred) + 
-                      0.05 * abs(aop_true - aop_pred))  - 0.02 * SSIM(aop_pred,aop_true, data_range= math.pi/2)
+        total_loss  = (0.1 * self.l1(s0_true, s0_pred) + 
+                      self.l1(dolp_true, dolp_pred) + 
+                      0.05 * self.l1(aop_true, aop_pred))  - 0.02 * SSIM(aop_pred,aop_true, data_range= math.pi/2)
 
         return total_loss
     

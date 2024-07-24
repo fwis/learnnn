@@ -9,7 +9,7 @@ from torch.utils.tensorboard import SummaryWriter
 import time
 from torch.cuda.amp import GradScaler, autocast
 
-def train(generator, discriminator, train_loader, val_loader, device, num_epochs, learning_rate=0.0001, weight_decay=1e-4, checkpoint_path='T3/Frame/ckpt/GAN16.pth', savebest=True):
+def train(generator, discriminator, train_loader, val_loader, device, num_epochs, learning_rate, weight_decay=1e-4, checkpoint_path='T3/Frame/ckpt/GAN19.pth', savebest=True):
     generator = generator.to(device)
     discriminator = discriminator.to(device)
     
@@ -97,7 +97,7 @@ def train(generator, discriminator, train_loader, val_loader, device, num_epochs
                 perceptual_loss = (perceptual_criterion(aop_pred,aop_true) + 
                                    perceptual_criterion(dolp_pred,dolp_true) + 
                                    perceptual_criterion(s0_pred,s0_true))/3
-                loss_G = content_loss + 1e-2 * adversarial_loss + 6e-4 * perceptual_loss
+                loss_G = content_loss + 2e-2 * adversarial_loss + 1e-3 * perceptual_loss
               
             scaler_G.scale(loss_G).backward()
             scaler_G.step(optimizer_G)

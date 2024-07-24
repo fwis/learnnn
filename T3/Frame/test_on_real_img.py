@@ -25,7 +25,7 @@ model.load_state_dict(checkpoint['generator_state_dict'])
 model = model.to(device)
 model.eval()
 
-input_data_path = r'D:\projects\learnnn\T3\Frame\test\83_data.pt'
+input_data_path = r'T3\Frame\test\83_data.pt'
 img = torch.load(input_data_path).unsqueeze(0).unsqueeze(0).to(device)
 
 # forward
@@ -36,9 +36,9 @@ aop = aop.cpu()
 dolp= dolp.cpu()
 s0 = s0.cpu()
 
-aop_true = torch.load(r'D:\projects\learnnn\T3\Frame\test\83_aop.pt').cpu().unsqueeze(0).unsqueeze(0)
-dolp_true = torch.load(r'D:\projects\learnnn\T3\Frame\test\83_dolp.pt').cpu().unsqueeze(0).unsqueeze(0)
-s0_true = torch.load(r'D:\projects\learnnn\T3\Frame\test\83_s0.pt').cpu().unsqueeze(0).unsqueeze(0)/2
+aop_true = torch.load(r'T3\Frame\test\83_aop.pt').cpu().unsqueeze(0).unsqueeze(0)
+dolp_true = torch.load(r'T3\Frame\test\83_dolp.pt').cpu().unsqueeze(0).unsqueeze(0)
+s0_true = torch.load(r'T3\Frame\test\83_s0.pt').cpu().unsqueeze(0).unsqueeze(0)/2
 
 SSIM_aop = SSIM(aop,aop_true,data_range=torch.pi/2)
 SSIM_dolp = SSIM(dolp,dolp_true,data_range=1.0)

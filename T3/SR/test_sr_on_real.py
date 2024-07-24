@@ -17,14 +17,14 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 model = ResNet()
 
 # Load checkpoint
-checkpoint_path = 'T3\Frame\ckpt\ResNet_cal_4_best.pth'
+checkpoint_path = 'T3\SR\ckpt\ResNet_sr_1_best.pth'
 checkpoint = torch.load(checkpoint_path)
 model.load_state_dict(checkpoint['model_state_dict'])
 model = model.to(device)
 model.eval()
 
 # Read image
-image_path = r'.\T3\Frame\test\83_net_input.png'
+image_path = r'.\T3\Frame\test\0_net_input.png'
 image = Image.open(image_path).convert('L')  # Convert image to grayscale
 
 # Transform image to tensor
@@ -34,16 +34,17 @@ img = transform(image).unsqueeze(0).to(device)
 
 # forward
 with torch.no_grad():
-    i0, i45, i90, i135 = model(img)
-    i0 = i0.cpu()
-    i45 = i45.cpu()
-    i90 = i90.cpu()
-    i135 = i135.cpu()
+    data = model(img)
+    i0, i45, i90, i135 = data[0][0], data[0][1], data[0][2], data[0][3]
+    i0 = i0.unsqueeze(0).unsqueeze(0).cpu()
+    i45 = i45.unsqueeze(0).unsqueeze(0).cpu()
+    i90 = i90.unsqueeze(0).unsqueeze(0).cpu()
+    i135 = i135.unsqueeze(0).unsqueeze(0).cpu()
 
-i0_true = transform(Image.open(r'.\T3\Frame\test\83_gt_0.png').convert('L')).unsqueeze(0).cpu()
-i45_true = transform(Image.open(r'.\T3\Frame\test\83_gt_45.png').convert('L')).unsqueeze(0).cpu()
-i90_true = transform(Image.open(r'.\T3\Frame\test\83_gt_90.png').convert('L')).unsqueeze(0).cpu()
-i135_true = transform(Image.open(r'.\T3\Frame\test\83_gt_135.png').convert('L')).unsqueeze(0).cpu()
+i0_true = transform(Image.open(r'.\T3\Frame\test\0_0.png').convert('L')).unsqueeze(0).cpu()
+i45_true = transform(Image.open(r'.\T3\Frame\test\0_45.png').convert('L')).unsqueeze(0).cpu()
+i90_true = transform(Image.open(r'.\T3\Frame\test\0_90.png').convert('L')).unsqueeze(0).cpu()
+i135_true = transform(Image.open(r'.\T3\Frame\test\0_135.png').convert('L')).unsqueeze(0).cpu()
 
 SSIM_i0 = SSIM(i0,i0_true,data_range=1.0)
 SSIM_i45 = SSIM(i45,i45_true,data_range=1.0)

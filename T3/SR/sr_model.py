@@ -44,7 +44,7 @@ def resnet_block(input_channels, num_channels, num_residuals, first_block=False)
     return blk
 
 class ResNet(nn.Module):
-    def __init__(self, num_blocks=[1, 1,  2]):
+    def __init__(self, num_blocks=[1, 1, 3, 1]):
         super(ResNet, self).__init__()
         self.conv1 = nn.Conv2d(1, 64, kernel_size=5, stride=1, padding=2, bias=False)
         self.bn1 = nn.BatchNorm2d(64)
@@ -52,23 +52,11 @@ class ResNet(nn.Module):
         
         # Residual blocks
         self.layer1 = nn.Sequential(*resnet_block(64, 64, num_blocks[0], first_block=True))
-        self.layer2 = nn.Sequential(*resnet_block(64, 128, num_blocks[1]))
+        self.layer2 = nn.Sequential(*resnet_block(64, 256, num_blocks[1]))
+        self.layer3 = nn.Sequential(*resnet_block(256, 128, num_blocks[2]))
+        self.layer4 = nn.Sequential(*resnet_block(128, 32, num_blocks[3]))
         
-        self.layer4_1 = nn.Sequential(*resnet_block(128, 32, num_blocks[2]))
-        self.layer4_2 = nn.Sequential(*resnet_block(128, 32, num_blocks[2]))
-        self.layer4_3 = nn.Sequential(*resnet_block(128, 32, num_blocks[2]))
-        self.layer4_4 = nn.Sequential(*resnet_block(128, 32, num_blocks[2]))
-        
-        # Output layer
-        # Depthwise separabel convolution
-        self.conv1_1 = nn.Conv2d(32,32,kernel_size=3,stride=1,padding=1,groups=32)
-        self.conv1_2 = nn.Conv2d(32,32,kernel_size=3,stride=1,padding=1,groups=32)
-        self.conv1_3 = nn.Conv2d(32,32,kernel_size=3,stride=1,padding=1,groups=32)
-        self.conv1_4 = nn.Conv2d(32,32,kernel_size=3,stride=1,padding=1,groups=32)
-        self.conv2_1 = nn.Conv2d(32,1,kernel_size=1,stride=1,padding=0)
-        self.conv2_2 = nn.Conv2d(32,1,kernel_size=1,stride=1,padding=0)
-        self.conv2_3 = nn.Conv2d(32,1,kernel_size=1,stride=1,padding=0)
-        self.conv2_4 = nn.Conv2d(32,1,kernel_size=1,stride=1,padding=0)
+        self.conv2 = nn.Conv2d(32,4,kernel_size=3,stride=1,padding=1)
         
     def forward(self, x):
         x = self.conv1(x)
@@ -76,25 +64,11 @@ class ResNet(nn.Module):
         x = self.relu(x)
         x = self.layer1(x)
         x = self.layer2(x)
+        x = self.layer3(x)
+        x = self.layer4(x)
+        x = self.conv2(x)
 
-        i0 = self.layer4_1(x)
-        i0 = self.conv1_1(i0)
-        i0 = self.conv2_1(i0)
-        
-        i45 = self.layer4_2(x)
-        i45 = self.conv1_2(i45)
-        i45 = self.conv2_2(i45)
-        
-        i90 = self.layer4_2(x)
-        i90 = self.conv1_2(i90)
-        i90 = self.conv2_2(i90)
-        
-        i135 = self.layer4_2(x)
-        i135 = self.conv1_2(i135)
-        i135 = self.conv2_2(i135)
-        
-        return i0, i45, i90, i135
-
+        return x
 '''
 Dataset
 '''
@@ -118,8 +92,10 @@ class MyDataset(Dataset):
             i135 = torch.from_numpy(h5file[f'labels/label_{idx}/i135'][...]).unsqueeze(0)
         if self.transform:
             data, i0, i45, i90, i135 = self.transform(data, i0, i45, i90, i135)
+            
+        lables = torch.concat((i0,i45,i90,i135))
         
-        return data, i0, i45, i90, i135
+        return data, lables
 
 # Data augmentation transform
 def custom_transform(data, i0, i45, i90, i135):
@@ -152,35 +128,46 @@ def custom_transform(data, i0, i45, i90, i135):
 '''
 Loss Functions
 '''
-class CustomLoss(nn.Module):
-    def __init__(self, weight=1):
-        super(CustomLoss, self).__init__()
-        self.weight = weight
-        self.mse = nn.MSELoss()
-        self.L1 = nn.L1Loss()
+# class CustomLoss(nn.Module):
+#     def __init__(self, weight=1):
+#         super(CustomLoss, self).__init__()
+#         self.weight = weight
+#         self.mse = nn.MSELoss()
+#         self.L1 = nn.L1Loss()
         
-    def forward(self, i0_pred, i0_true, i45_pred, i45_true, i90_pred, i90_true, i135_pred, i135_true):
-        # Physics informed loss
-        s0_pred = (i0_pred + i45_pred + i90_pred + i135_pred) / 2
-        s0_true = (i0_true + i45_true + i90_true + i135_true) / 2
-        s0_loss = self.mse(s0_pred,s0_true)
-        # print('s0',s0_loss)
-        dolp_pred = torch.mean(torch.sqrt(torch.square(i0_pred - i90_pred) + torch.square(i45_pred - i135_pred)) / (torch.mean(s0_pred) + 1e-8))
-        dolp_true = torch.mean(torch.sqrt(torch.square(i0_true - i90_true) + torch.square(i45_true - i135_true)) / (torch.mean(s0_true) + 1e-8))
-        dolp_loss = self.L1(dolp_pred,dolp_true)
-        # print('dolp',dolp_loss)
-        # print('dolp',torch.mean(abs(dolp_true - dolp_pred)))
-        # aop_pred = 0.5 * torch.arctan(torch.abs(i45_pred - i135_pred) / (torch.abs(i0_pred - i90_pred) + 1e-8)) + math.pi/4.
-        # aop_true = 0.5 * torch.arctan((i45_true - i135_true) / (i0_true - i90_true + 1e-8)) + math.pi/4.
-        # print('aop',torch.mean(abs(aop_true - aop_pred)))
+#     def forward(self, i0_pred, i0_true, i45_pred, i45_true, i90_pred, i90_true, i135_pred, i135_true):
+#         # Physics informed loss
+#         s0_pred = (i0_pred + i45_pred + i90_pred + i135_pred) / 2
+#         s0_true = (i0_true + i45_true + i90_true + i135_true) / 2
+#         s0_loss = self.mse(s0_pred,s0_true)
+#         # print('s0',s0_loss)
+#         dolp_pred = torch.mean(torch.sqrt(torch.square(i0_pred - i90_pred) + torch.square(i45_pred - i135_pred)) / (torch.mean(s0_pred) + 1e-8))
+#         dolp_true = torch.mean(torch.sqrt(torch.square(i0_true - i90_true) + torch.square(i45_true - i135_true)) / (torch.mean(s0_true) + 1e-8))
+#         dolp_loss = self.L1(dolp_pred,dolp_true)
+#         # print('dolp',dolp_loss)
+#         # print('dolp',torch.mean(abs(dolp_true - dolp_pred)))
+#         # aop_pred = 0.5 * torch.arctan(torch.abs(i45_pred - i135_pred) / (torch.abs(i0_pred - i90_pred) + 1e-8)) + math.pi/4.
+#         # aop_true = 0.5 * torch.arctan((i45_true - i135_true) / (i0_true - i90_true + 1e-8)) + math.pi/4.
+#         # print('aop',torch.mean(abs(aop_true - aop_pred)))
     
-        # Total loss
-        total_loss  = torch.mean(self.mse(i0_pred, i0_true) + self.mse(i45_pred,i45_true) + 
-                                self.mse(i90_pred,i90_true) + self.mse(i135_pred,i135_true))/4 + s0_loss + dolp_loss
-                    #   0.6 * abs(dolp_true - dolp_pred) + 
-                    #   0.3 * abs(aop_true - aop_pred)) 
-        # print(total_loss)
-        return total_loss
+#         # Total loss
+#         total_loss  = torch.mean(self.mse(i0_pred, i0_true) + self.mse(i45_pred,i45_true) + 
+#                                 self.mse(i90_pred,i90_true) + self.mse(i135_pred,i135_true))/4 + s0_loss + dolp_loss
+#                     #   0.6 * abs(dolp_true - dolp_pred) + 
+#                     #   0.3 * abs(aop_true - aop_pred)) 
+#         # print(total_loss)
+#         return total_loss
+
+class CustomLoss(nn.Module):
+    def __init__(self):
+        super(CustomLoss, self).__init__()
+        self.mse = nn.MSELoss()
+        
+    def forward(self, labels, output):
+        loss = self.mse(labels, output)
+        # print(loss.shape)
+        return loss
+
 
 class PerceptualLoss(nn.Module):
     def __init__(self, feature_layer=19):

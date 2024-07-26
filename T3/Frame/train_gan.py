@@ -9,7 +9,7 @@ from torch.utils.tensorboard import SummaryWriter
 import time
 from torch.cuda.amp import GradScaler, autocast
 
-def train(generator, discriminator, train_loader, val_loader, device, num_epochs, learning_rate, weight_decay=1e-4, checkpoint_path='T3/Frame/ckpt/GAN19.pth', savebest=True):
+def train(generator, discriminator, train_loader, val_loader, device, num_epochs, learning_rate, weight_decay=1e-4, checkpoint_path='T3/Frame/ckpt/GAN_Fork.pth', savebest=True):
     generator = generator.to(device)
     discriminator = discriminator.to(device)
     
@@ -97,7 +97,7 @@ def train(generator, discriminator, train_loader, val_loader, device, num_epochs
                 perceptual_loss = (perceptual_criterion(aop_pred,aop_true) + 
                                    perceptual_criterion(dolp_pred,dolp_true) + 
                                    perceptual_criterion(s0_pred,s0_true))/3
-                loss_G = content_loss + 2e-2 * adversarial_loss + 1e-3 * perceptual_loss
+                loss_G = content_loss + 1.2e-2 * adversarial_loss + 1e-3 * perceptual_loss
               
             scaler_G.scale(loss_G).backward()
             scaler_G.step(optimizer_G)
@@ -174,7 +174,7 @@ if __name__ == "__main__":
     batch_size = 60
     weight_decay = 1e-4
 
-    train_file_path = r'T3\Frame\data\patches\train_patches_100\OL_train_100_1.h5'
+    train_file_path = r'T3\Frame\data\patches\train_patches_100\Fork_train_100.h5'
     test_file_path = r'T3\Frame\data\patches\test_patches_100\OL_test_100.h5'
     train_dataset = MyDataset(train_file_path, transform=custom_transform)
     val_dataset = MyDataset(test_file_path)

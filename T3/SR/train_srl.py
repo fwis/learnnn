@@ -9,7 +9,6 @@ from torch.utils.tensorboard import SummaryWriter
 import time
 from torch.cuda.amp import GradScaler, autocast
 
-
 # def train(model, train_loader, val_loader, device, num_epochs=10, learning_rate=0.001, weight_decay=1e-4, checkpoint_path='T3/Frame/ckpt/ResNet_sr_1.pth', savebest=True):
 #     # Model, criterion and optimizer
 #     model = model.to(device)
@@ -112,11 +111,11 @@ from torch.cuda.amp import GradScaler, autocast
 #     print('Finished Training')
 
 
-def train(model, train_loader, val_loader, device, num_epochs=10, learning_rate=0.001, weight_decay=1e-4, checkpoint_path='T3/SR/ckpt/ResNet_sr_1.pth', savebest=True):
+def train(model, train_loader, val_loader, device, num_epochs=10, learning_rate=0.001, weight_decay=1e-4, checkpoint_path='T3/SR/ckpt/ResNet_sr_2.pth', savebest=True):
     # Model, criterion and optimizer
     model = model.to(device)
     criterion = CustomLoss().to(device)
-    # perceptual_criterion = PerceptualLoss().to(device)
+    perceptual_criterion = PerceptualLoss().to(device)
     optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
     # Initialize gradient scaler for mixed precision training
     scaler = GradScaler()
@@ -138,13 +137,20 @@ def train(model, train_loader, val_loader, device, num_epochs=10, learning_rate=
         for i, (data, labels) in enumerate(train_loader):
             inputs = data.to(device)
             labels = labels.to(device)
-            
             optimizer.zero_grad()
             
             with autocast(): 
                 output = model(inputs)
-                loss = criterion(output,labels)
+                content_loss = criterion(output,labels)
+                # print('contentloss', content_loss)
+                perceptual_loss = (perceptual_criterion(output[0][0],labels[0][0]) + 
+                                   perceptual_criterion(output[0][0],labels[0][0]) + 
+                                   perceptual_criterion(output[0][0],labels[0][0]) + 
+                                   perceptual_criterion(output[0][0],labels[0][0]))/4
+                # print('perceptual loss', perceptual_loss)
+                loss = content_loss + 1e-2*perceptual_loss
 
+                    
             scaler.scale(loss).backward()
             scaler.step(optimizer)
             scaler.update()
@@ -215,7 +221,7 @@ if __name__ == "__main__":
     
     train_file_path = r'T3\Frame\data\patches\sr_train\OL_sr_train.h5'
     test_file_path = r'T3\Frame\data\patches\sr_test\OL_sr_test.h5'
-    train_dataset = MyDataset(train_file_path, transform=custom_transform)
+    train_dataset = MyDataset(train_file_path)
     val_dataset = MyDataset(test_file_path)
     
     # Create DataLoader

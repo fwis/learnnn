@@ -165,8 +165,11 @@ class CustomLoss(nn.Module):
         
     def forward(self, labels, output):
         loss = self.mse(labels, output)
+        s0_pred = torch.sum(output, dim=1)/2
+        s0_true = torch.sum(labels, dim=1)/2
+        s0_loss = self.mse(s0_true, s0_pred)
         # print(loss.shape)
-        return loss
+        return loss + s0_loss
 
 
 class PerceptualLoss(nn.Module):

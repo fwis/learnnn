@@ -31,23 +31,24 @@ class image_target:
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 model = ResNetGenerator()
-checkpoint_path = 'T3/Frame/ckpt/GAN2_best.pth'
+checkpoint_path = 'T3/Frame/ckpt/GAN14_best.pth'
 checkpoint = torch.load(checkpoint_path)
 model.load_state_dict(checkpoint['generator_state_dict'])
 model.eval()
 model.to(device)
-task_index = 2 # [0, 1, 2] = aop, dolp, s0
+task_index = 1 # [0, 1, 2] = aop, dolp, s0
 single_task_model = single_task_model_wrapper(model, task_index)
 
 # Set target layer
-target_layer = single_task_model.model.layer3_3
+target_layer = single_task_model.model.conv1
 
 # Create GradCAM instance
 cam = GradCAM(model=single_task_model, target_layers=[target_layer])
 
 # Input image
-input_tensor = torch.load(r'T3\Frame\test\83_data.pt').to(torch.device('cuda' if torch.cuda.is_available() else 'cpu'))
-input_tensor = input_tensor[200:1000,200:1000].unsqueeze(0).unsqueeze(0)
+input_tensor = torch.load(r'T3\Frame\test\46_data.pt').to(torch.device('cuda' if torch.cuda.is_available() else 'cpu'))
+input_tensor = input_tensor.unsqueeze(0).unsqueeze(0)
+# [200:1000,200:1000]
 original_image = input_tensor.clone()
 
 # Generate CAM heatmap

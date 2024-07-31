@@ -17,7 +17,7 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 model = ResNet()
 
 # Load checkpoint
-checkpoint_path = 'T3\SR\ckpt\ResNet_sr_1_best.pth'
+checkpoint_path = 'T3\SR\ckpt\ResNet_sr_3_best.pth'
 checkpoint = torch.load(checkpoint_path)
 model.load_state_dict(checkpoint['model_state_dict'])
 model = model.to(device)

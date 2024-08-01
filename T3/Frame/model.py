@@ -530,26 +530,77 @@ class CustomContentLoss(nn.Module):
         
         return total_loss
 
-class PerceptualLoss(nn.Module):
-    def __init__(self, feature_layer=19):
-        super(PerceptualLoss, self).__init__()
-        vgg = models.vgg19(pretrained=True).features
-        self.features = nn.Sequential(*list(vgg.children())[:feature_layer]).eval()
-        for param in self.features.parameters():
-            param.requires_grad = False
-        self.criterion = nn.MSELoss()
-        # self.normalize = Normalize(mean=[0.485], std=[0.229])
+# class PerceptualLoss(nn.Module):
+#     def __init__(self, feature_layer=19):
+#         super(PerceptualLoss, self).__init__()
+#         vgg = models.vgg19(pretrained=True).features
+#         self.features = nn.Sequential(*list(vgg.children())[:feature_layer]).eval()
+#         for param in self.features.parameters():
+#             param.requires_grad = False
+#         self.criterion = nn.MSELoss()
+#         # self.normalize = Normalize(mean=[0.485], std=[0.229])
 
-    def forward(self, input, target):
-        # input = self.normalize(input)
-        input = input.repeat(1, 3, 1, 1)
-        # target = self.normalize(target)
-        target = target.repeat(1, 3, 1, 1)
-        input_features = self.features(input)
-        target_features = self.features(target)
-        loss = self.criterion(input_features, target_features)
-        return loss
+#     def forward(self, input, target):
+#         # input = self.normalize(input)
+#         input = input.repeat(1, 3, 1, 1)
+#         # target = self.normalize(target)
+#         target = target.repeat(1, 3, 1, 1)
+#         input_features = self.features(input)
+#         target_features = self.features(target)
+#         loss = self.criterion(input_features, target_features)
+#         return loss
+
+class PerceptualLoss(nn.Module):
+    def __init__(self, feature_layers=None, use_gpu=True):
+        super(PerceptualLoss, self).__init__()
+        self.vgg = models.vgg19(pretrained=True).features
+        if feature_layers is None:
+            self.feature_layers = [5, 10, 19]
+        else:
+            self.feature_layers = feature_layers
+        
+        self.vgg = nn.Sequential(*[self.vgg[i] for i in range(max(self.feature_layers) + 1)])
+        self.vgg.eval()
+
+        for param in self.vgg.parameters():
+            param.requires_grad = False
+        
+        self.criterion = nn.MSELoss()
+        self.normalize = Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+        self.device = torch.device('cuda' if torch.cuda.is_available() and use_gpu else 'cpu')
+        self.vgg.to(self.device)
     
+    def forward(self, inputs, targets):
+        total_loss = 0
+        for input, target in zip(inputs, targets):
+            input = input.repeat(1, 3, 1, 1)
+            target = target.repeat(1, 3, 1, 1)
+            
+            input = self.normalize(input)
+            target = self.normalize(target)
+            
+            input = input.to(self.device)
+            target = target.to(self.device)
+            
+            input_features = self.extract_features(input)
+            target_features = self.extract_features(target)
+            
+            loss = 0
+            for inp_feat, tgt_feat in zip(input_features, target_features):
+                loss += self.criterion(inp_feat, tgt_feat)
+            
+            total_loss += loss
+        
+        return total_loss
+    
+    def extract_features(self, x):
+        features = []
+        for i, layer in enumerate(self.vgg):
+            x = layer(x)
+            if i in self.feature_layers:
+                features.append(x)
+        return features
+       
 # ESRGAN
 class ResidualDenseBlock_5C(nn.Module):
     def __init__(self, nf=64, gc=32, bias=True):

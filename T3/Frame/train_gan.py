@@ -9,7 +9,7 @@ from torch.utils.tensorboard import SummaryWriter
 import time
 from torch.cuda.amp import GradScaler, autocast
 
-def train(generator, discriminator, train_loader, val_loader, device, num_epochs, learning_rate, weight_decay=1e-4, checkpoint_path='T3/Frame/ckpt/GAN_Fork.pth', savebest=True):
+def train(generator, discriminator, train_loader, val_loader, device, num_epochs, learning_rate, weight_decay=1e-4, checkpoint_path='T3/Frame/ckpt/GAN_Fork2.pth', savebest=True):
     generator = generator.to(device)
     discriminator = discriminator.to(device)
     
@@ -94,10 +94,10 @@ def train(generator, discriminator, train_loader, val_loader, device, num_epochs
                                     weight_dolp * (adversarial_criterion(disc_outputs[1], real_labels)) +
                                     weight_s0 * (adversarial_criterion(disc_outputs[2], real_labels)))/3
                 #Perceptual loss
-                perceptual_loss = (perceptual_criterion(aop_pred,aop_true) + 
+                perceptual_loss = (perceptual_criterion(aop_pred,aop_true) +
                                    perceptual_criterion(dolp_pred,dolp_true) + 
                                    perceptual_criterion(s0_pred,s0_true))/3
-                loss_G = content_loss + 1.2e-2 * adversarial_loss + 1e-3 * perceptual_loss
+                loss_G = content_loss + 1e-2 * adversarial_loss + 1.5e-5 * perceptual_loss
               
             scaler_G.scale(loss_G).backward()
             scaler_G.step(optimizer_G)
@@ -130,7 +130,10 @@ def train(generator, discriminator, train_loader, val_loader, device, num_epochs
                 s0_true = s0.to(device)
                 aop_pred, dolp_pred, s0_pred = generator(inputs)
                 
-                loss = content_criterion(s0_pred, s0_true, dolp_pred, dolp_true, aop_pred, aop_true)
+                loss = (content_criterion(s0_pred, s0_true, dolp_pred, dolp_true, aop_pred, aop_true) +
+                        1e-5 * (perceptual_criterion(aop_pred,aop_true) +
+                                   perceptual_criterion(dolp_pred,dolp_true) + 
+                                   perceptual_criterion(s0_pred,s0_true)/3))
                 val_loss += loss.item()
         
         val_loss /= len(val_loader)
@@ -164,14 +167,14 @@ def train(generator, discriminator, train_loader, val_loader, device, num_epochs
     print('Finished Training')
     
 if __name__ == "__main__":
-    lr = 0.001
-    num_epochs = 500
+    lr = 0.0001
+    num_epochs = 300
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     generator = ResNetGenerator()
     discriminator = Discriminator()
 
-    batch_size = 60
+    batch_size = 50
     weight_decay = 1e-4
 
     train_file_path = r'T3\Frame\data\patches\train_patches_100\Fork_train_100.h5'

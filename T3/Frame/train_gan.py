@@ -9,7 +9,7 @@ from torch.utils.tensorboard import SummaryWriter
 import time
 from torch.cuda.amp import GradScaler, autocast
 
-def train(generator, discriminator, train_loader, val_loader, device, num_epochs, learning_rate, weight_decay=1e-4, checkpoint_path='T3/Frame/ckpt/GAN_Fork2.pth', savebest=True):
+def train(generator, discriminator, train_loader, val_loader, device, num_epochs, learning_rate, weight_decay=1e-4, checkpoint_path='T3/Frame/ckpt/GAN_Fork4.pth', savebest=True):
     generator = generator.to(device)
     discriminator = discriminator.to(device)
     
@@ -97,7 +97,9 @@ def train(generator, discriminator, train_loader, val_loader, device, num_epochs
                 perceptual_loss = (perceptual_criterion(aop_pred,aop_true) +
                                    perceptual_criterion(dolp_pred,dolp_true) + 
                                    perceptual_criterion(s0_pred,s0_true))/3
-                loss_G = content_loss + 1e-2 * adversarial_loss + 1.5e-5 * perceptual_loss
+                w_adversarial = 1e-2
+                w_perceptual = 3e-5
+                loss_G = content_loss + w_adversarial * adversarial_loss + w_perceptual * perceptual_loss
               
             scaler_G.scale(loss_G).backward()
             scaler_G.step(optimizer_G)
@@ -130,8 +132,8 @@ def train(generator, discriminator, train_loader, val_loader, device, num_epochs
                 s0_true = s0.to(device)
                 aop_pred, dolp_pred, s0_pred = generator(inputs)
                 
-                loss = (content_criterion(s0_pred, s0_true, dolp_pred, dolp_true, aop_pred, aop_true) +
-                        1e-5 * (perceptual_criterion(aop_pred,aop_true) +
+                loss = (content_criterion(s0_pred, s0_true, dolp_pred, dolp_true, aop_pred, aop_true)
+                        + 0.1 * w_perceptual * (perceptual_criterion(aop_pred,aop_true) +
                                    perceptual_criterion(dolp_pred,dolp_true) + 
                                    perceptual_criterion(s0_pred,s0_true)/3))
                 val_loss += loss.item()

@@ -481,13 +481,16 @@ class Discriminator(nn.Module):
         # Branches for aop, dolp, s0
         self.branch_aop = nn.Sequential(nn.Conv2d(256, 96, kernel_size=3, stride=1, padding=1),
                                         nn.LeakyReLU(0.2, inplace=True),
-                                        nn.Conv2d(96, 1, kernel_size=5, stride=1, padding=2))
+                                        nn.Conv2d(96, 1, kernel_size=5, stride=1, padding=2),
+                                        nn.Sigmoid())
         self.branch_dolp = nn.Sequential(nn.Conv2d(256, 96, kernel_size=3, stride=1, padding=1),
                                          nn.LeakyReLU(0.2, inplace=True),
-                                         nn.Conv2d(96, 1, kernel_size=5, stride=1, padding=2))
+                                         nn.Conv2d(96, 1, kernel_size=5, stride=1, padding=2),
+                                         nn.Sigmoid())
         self.branch_s0 = nn.Sequential(nn.Conv2d(256, 96, kernel_size=3, stride=1, padding=1),
                                        nn.LeakyReLU(0.2, inplace=True),
-                                       nn.Conv2d(96, 1, kernel_size=5, stride=1, padding=2))
+                                       nn.Conv2d(96, 1, kernel_size=5, stride=1, padding=2),
+                                       nn.Sigmoid())
 
     def forward(self, aop, dolp, s0):
         out_aop = self.shared(aop)

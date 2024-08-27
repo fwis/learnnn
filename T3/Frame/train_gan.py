@@ -8,8 +8,9 @@ from model import MyDataset, ResNetGenerator, Discriminator, CustomContentLoss, 
 from torch.utils.tensorboard import SummaryWriter
 import time
 from torch.cuda.amp import GradScaler, autocast
+import torchmetrics
 
-def train(generator, discriminator, train_loader, val_loader, device, num_epochs, learning_rate, weight_decay=1e-4, checkpoint_path='T3/Frame/ckpt/GAN_Fork4.pth', savebest=True):
+def train(generator, discriminator, train_loader, val_loader, device, num_epochs, learning_rate, weight_decay=1e-4, checkpoint_path='T3/Frame/ckpt/GAN_Fork5.pth', savebest=True):
     generator = generator.to(device)
     discriminator = discriminator.to(device)
     
@@ -33,7 +34,7 @@ def train(generator, discriminator, train_loader, val_loader, device, num_epochs
     writer = SummaryWriter(log_dir)
     
     best_val_loss = float('inf')
-
+    best_psnr = float('-inf')
     # Load checkpoint if exists
     if os.path.exists(checkpoint_path):
         checkpoint = torch.load(checkpoint_path)
@@ -98,7 +99,7 @@ def train(generator, discriminator, train_loader, val_loader, device, num_epochs
                                    perceptual_criterion(dolp_pred,dolp_true) + 
                                    perceptual_criterion(s0_pred,s0_true))/3
                 w_adversarial = 1e-2
-                w_perceptual = 3e-5
+                w_perceptual = 5e-5
                 loss_G = content_loss + w_adversarial * adversarial_loss + w_perceptual * perceptual_loss
               
             scaler_G.scale(loss_G).backward()
@@ -124,6 +125,12 @@ def train(generator, discriminator, train_loader, val_loader, device, num_epochs
         # Validation
         generator.eval()
         val_loss = 0.0
+        val_psnr = 0.0
+        val_psnr_aop = 0.0
+        val_psnr_dolp = 0.0
+        val_psnr_s0 = 0.0
+        psnr_val = torchmetrics.PeakSignalNoiseRatio(data_range=1.0).to(device)
+        psnr_a = torchmetrics.PeakSignalNoiseRatio(data_range=torch.pi).to(device)
         with torch.no_grad():
             for data, aop, dolp, s0 in val_loader:
                 inputs = data.to(device)
@@ -137,11 +144,30 @@ def train(generator, discriminator, train_loader, val_loader, device, num_epochs
                                    perceptual_criterion(dolp_pred,dolp_true) + 
                                    perceptual_criterion(s0_pred,s0_true)/3))
                 val_loss += loss.item()
-        
+                
+                psnr_aop = psnr_a(aop_pred, aop_true)
+                psnr_dolp = psnr_val(dolp_pred, dolp_true)
+                psnr_s0 = psnr_val(s0_pred, s0_true)
+                
+                val_psnr_aop += psnr_aop.item()
+                val_psnr_dolp += psnr_dolp.item()
+                val_psnr_s0 += psnr_s0.item()
+                
+                psnr_avg = (psnr_aop + psnr_dolp + psnr_s0) / 3
+                val_psnr += psnr_avg.item()
+                
         val_loss /= len(val_loader)
+        val_psnr /= len(val_loader)
+        
+        val_psnr_aop /= len(val_loader)
+        val_psnr_dolp /= len(val_loader)
+        val_psnr_s0 /= len(val_loader)
+        
         print(f'Epoch {epoch + 1}, Validation Loss: {val_loss:.4f}')
         writer.add_scalar('Validation Loss', val_loss, epoch + 1)
-        
+        writer.add_scalar('Validation PSNR', val_psnr, epoch + 1)
+        writer.add_scalars('PSNR', {'PSNR of AoP': val_psnr_aop, 'PSNR of DoLP': val_psnr_dolp, 
+                                    'PSNR of S0': val_psnr_s0}, global_step=epoch + 1)
         torch.cuda.empty_cache()
 
         # Save checkpoint
@@ -164,6 +190,20 @@ def train(generator, discriminator, train_loader, val_loader, device, num_epochs
                     'val_loss': val_loss,
                 }, best_checkpoint_path)
                 print('Best checkpoint saved.')
+                
+        # Save best model based on PSNR
+            if val_psnr > best_psnr:
+                best_psnr = val_psnr
+                best_epoch = epoch + 1
+                best_checkpoint_path = checkpoint_path.replace('.pth', '_best_psnr.pth')
+                torch.save({
+                    'generator_state_dict': generator.state_dict(),
+                    'discriminator_state_dict': discriminator.state_dict(),
+                    'epoch': best_epoch,
+                    'psnr': best_psnr,
+                }, best_checkpoint_path)
+                print(f'Best checkpoint based on PSNR saved at epoch {best_epoch}, PSNR: {best_psnr:.4f}')
+                
         torch.cuda.empty_cache()
     writer.close()
     print('Finished Training')

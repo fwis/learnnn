@@ -157,10 +157,11 @@ class CustomLoss(nn.Module):
         s0_loss = self.mse(s0_true, s0_pred)
         Q_loss = self.mse(output[:, 0, :, :].unsqueeze(1) - output[:, 2, :, :].unsqueeze(1), labels[:, 0, :, :].unsqueeze(1) - labels[:, 2, :, :].unsqueeze(1))
         U_loss = self.mse(output[:, 1, :, :].unsqueeze(1) - output[:, 3, :, :].unsqueeze(1), labels[:, 1, :, :].unsqueeze(1) - labels[:, 3, :, :].unsqueeze(1))
-        # dolp_pred = torch.mean(torch.sqrt(torch.square(output[:][0] - output[:][2]) + torch.square(output[:][1] - output[:][3])) / (torch.mean(s0_pred) + 1e-8))
-        # dolp_true = torch.mean(torch.sqrt(torch.square(labels[:][0] - labels[:][2]) + torch.square(labels[:][1] - labels[:][3])) / (torch.mean(s0_true) + 1e-8))
+        # dolp_pred = torch.mean(torch.sqrt(torch.square(output[:, 0, :, :] - output[:, 2, :, :]) + torch.square(output[:, 1, :, :] - output[:, 3, :, :])) / (torch.mean(s0_pred) + 1e-8))
+        # dolp_true = torch.mean(torch.sqrt(torch.square(labels[:, 0, :, :] - labels[:, 2, :, :]) + torch.square(labels[:, 1, :, :] - labels[:, 3, :, :])) / (torch.mean(s0_true) + 1e-8))
         # dolp_loss = self.mse(dolp_pred,dolp_true)
-        total_loss = loss + 0.2 * s0_loss + Q_loss + U_loss
+        total_loss = loss + 0.2 * s0_loss + 0.5 * (Q_loss + U_loss) 
+        
         return total_loss
 
 # class PerceptualLoss(nn.Module):

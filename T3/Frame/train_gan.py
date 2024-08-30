@@ -10,7 +10,7 @@ import time
 from torch.cuda.amp import GradScaler, autocast
 import torchmetrics
 
-def train(generator, discriminator, train_loader, val_loader, device, num_epochs, learning_rate, weight_decay=1e-4, checkpoint_path='T3/Frame/ckpt/GAN_Fork5.pth', savebest=True):
+def train(generator, discriminator, train_loader, val_loader, device, num_epochs, learning_rate, weight_decay=1e-4, checkpoint_path='T3/Frame/ckpt/GAN_Fork6.pth', savebest=True):
     generator = generator.to(device)
     discriminator = discriminator.to(device)
     
@@ -130,7 +130,7 @@ def train(generator, discriminator, train_loader, val_loader, device, num_epochs
         val_psnr_dolp = 0.0
         val_psnr_s0 = 0.0
         psnr_val = torchmetrics.PeakSignalNoiseRatio(data_range=1.0).to(device)
-        psnr_a = torchmetrics.PeakSignalNoiseRatio(data_range=torch.pi).to(device)
+        psnr_a = torchmetrics.PeakSignalNoiseRatio(data_range=torch.pi/2).to(device)
         with torch.no_grad():
             for data, aop, dolp, s0 in val_loader:
                 inputs = data.to(device)
@@ -225,7 +225,7 @@ if __name__ == "__main__":
     val_dataset = MyDataset(test_file_path)
 
     train_loader = DataLoader(train_dataset, batch_size=batch_size, num_workers=10, pin_memory=True, shuffle=True)
-    val_loader = DataLoader(val_dataset, batch_size=32, num_workers=10, pin_memory=True, shuffle=False)
+    val_loader = DataLoader(val_dataset, batch_size=10, num_workers=10, pin_memory=True, shuffle=False)
     
     train(generator=generator, discriminator=discriminator, train_loader=train_loader, val_loader=val_loader, num_epochs=num_epochs, learning_rate=lr, weight_decay=weight_decay, device=device)
     

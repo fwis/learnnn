@@ -10,7 +10,7 @@ import time
 from torch.cuda.amp import GradScaler, autocast
 import torchmetrics
 
-def train(generator, discriminator, train_loader, val_loader, device, num_epochs, learning_rate, weight_decay=1e-4, checkpoint_path='T3/Frame/ckpt/GAN_Fork8.pth', savebest=True):
+def train(generator, discriminator, train_loader, val_loader, device, num_epochs, learning_rate, weight_decay=1e-4, checkpoint_path='T3/Frame/ckpt/GAN_Fork9.pth', savebest=True):
     generator = generator.to(device)
     discriminator = discriminator.to(device)
     
@@ -98,7 +98,7 @@ def train(generator, discriminator, train_loader, val_loader, device, num_epochs
                 perceptual_loss = (perceptual_criterion(aop_pred,aop_true) +
                                    perceptual_criterion(dolp_pred,dolp_true) + 
                                    perceptual_criterion(s0_pred,s0_true))/3
-                w_adversarial = 1.2e-3
+                w_adversarial = 1e-2
                 w_perceptual = 5e-5
                 loss_G = content_loss + w_adversarial * adversarial_loss + w_perceptual * perceptual_loss
               
@@ -129,8 +129,9 @@ def train(generator, discriminator, train_loader, val_loader, device, num_epochs
         val_psnr_aop = 0.0
         val_psnr_dolp = 0.0
         val_psnr_s0 = 0.0
-        psnr_val = torchmetrics.PeakSignalNoiseRatio(data_range=1.0).to(device)
-        psnr_a = torchmetrics.PeakSignalNoiseRatio(data_range=torch.pi/2).to(device)
+        psnr_val_s0 = torchmetrics.PeakSignalNoiseRatio(data_range=1.0).to(device)
+        psnr_val_dolp = torchmetrics.PeakSignalNoiseRatio(data_range=1.0).to(device)
+        psnr_val_aop = torchmetrics.PeakSignalNoiseRatio(data_range=torch.pi/2).to(device)
         with torch.no_grad():
             for data, aop, dolp, s0 in val_loader:
                 inputs = data.to(device)
@@ -145,9 +146,9 @@ def train(generator, discriminator, train_loader, val_loader, device, num_epochs
                                    perceptual_criterion(s0_pred,s0_true)/3))
                 val_loss += loss.item()
                 
-                psnr_aop = psnr_a(aop_pred, aop_true)
-                psnr_dolp = psnr_val(dolp_pred, dolp_true)
-                psnr_s0 = psnr_val(s0_pred, s0_true)
+                psnr_aop = psnr_val_aop(aop_pred, aop_true)
+                psnr_dolp = psnr_val_dolp(dolp_pred, dolp_true)
+                psnr_s0 = psnr_val_s0(s0_pred, s0_true)
                 
                 val_psnr_aop += psnr_aop.item()
                 val_psnr_dolp += psnr_dolp.item()
@@ -220,12 +221,12 @@ if __name__ == "__main__":
     weight_decay = 1e-4
 
     train_file_path = r'T3\Frame\data\patches\train_patches_100\Fork_train_100.h5'
-    test_file_path = r'T3\Frame\data\patches\test_patches_100\OL_test_100.h5'
+    test_file_path = r'T3\Frame\data\patches\test_patches_100\Fork_test_100.h5'
     train_dataset = MyDataset(train_file_path, transform=custom_transform)
     val_dataset = MyDataset(test_file_path)
 
     train_loader = DataLoader(train_dataset, batch_size=batch_size, num_workers=10, pin_memory=True, shuffle=True)
-    val_loader = DataLoader(val_dataset, batch_size=10, num_workers=10, pin_memory=True, shuffle=False)
+    val_loader = DataLoader(val_dataset, batch_size=10, num_workers=8, pin_memory=True, shuffle=False)
     
     train(generator=generator, discriminator=discriminator, train_loader=train_loader, val_loader=val_loader, num_epochs=num_epochs, learning_rate=lr, weight_decay=weight_decay, device=device)
     

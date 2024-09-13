@@ -68,11 +68,11 @@ def test_gan(model, dataloader, device='cuda'):
 
 if __name__ == "__main__":
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    test_file_path = r'T3\Frame\data\patches\test_patches_100\Fork_test_100.h5'
+    test_file_path = r'T3\Frame\data\patches\test_patches\OL_test.h5'
     val_dataset = MyDataset(file_path=test_file_path, transform=None)
     val_loader = DataLoader(val_dataset, batch_size=1, num_workers=2, pin_memory=True,  shuffle=False)
     model = ResNetGenerator()
-    checkpoint_path = 'T3/Frame/ckpt/GAN_Fork9_best_psnr.pth'
+    checkpoint_path = 'T3/Frame/ckpt/GAN_OL_best_psnr.pth'
     checkpoint = torch.load(checkpoint_path)
     model.load_state_dict(checkpoint['generator_state_dict'])
     model = model.to(device)

@@ -10,7 +10,7 @@ import time
 from torch.cuda.amp import GradScaler, autocast
 import torchmetrics
 
-def train(generator, discriminator, train_loader, val_loader, device, num_epochs, learning_rate, weight_decay=1e-4, checkpoint_path='T3/Frame/ckpt/GAN_Fork9.pth', savebest=True):
+def train(generator, discriminator, train_loader, val_loader, device, num_epochs, learning_rate, weight_decay=1e-4, checkpoint_path='T3/Frame/ckpt/GAN_OL.pth', savebest=True):
     generator = generator.to(device)
     discriminator = discriminator.to(device)
     
@@ -220,8 +220,8 @@ if __name__ == "__main__":
     batch_size = 50
     weight_decay = 1e-4
 
-    train_file_path = r'T3\Frame\data\patches\train_patches_100\Fork_train_100.h5'
-    test_file_path = r'T3\Frame\data\patches\test_patches_100\Fork_test_100.h5'
+    train_file_path = r'T3\Frame\data\patches\train_patches_100\OL_train_100.h5'
+    test_file_path = r'T3\Frame\data\patches\test_patches_100\OL_test_100.h5'
     train_dataset = MyDataset(train_file_path, transform=custom_transform)
     val_dataset = MyDataset(test_file_path)
 

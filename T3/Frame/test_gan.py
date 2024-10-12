@@ -32,7 +32,7 @@ def test_gan(model, dataloader, device='cuda'):
             aop_pred, dolp_pred, s0_pred = model(inputs)
             
             # Calculate SSIM, PSNR, MSE
-            SSIM_aop += SSIM(aop_pred, aop_true, data_range=torch.pi/2).item()
+            SSIM_aop += SSIM(aop_pred, aop_true, data_range=torch.pi).item()
             SSIM_dolp += SSIM(dolp_pred, dolp_true, data_range=1.0).item()
             SSIM_s0 += SSIM(s0_pred, s0_true, data_range=1.0).item()
 
@@ -40,7 +40,7 @@ def test_gan(model, dataloader, device='cuda'):
             RMSE_aop += torch.mean((aop_pred - aop_true) ** 2).item()
             RMSE_dolp += torch.mean((dolp_pred - dolp_true) ** 2).item()
 
-            PSNR_aop += PSNR(aop_pred, aop_true, data_range=torch.pi/2).item()
+            PSNR_aop += PSNR(aop_pred, aop_true, data_range=torch.pi).item()
             PSNR_dolp += PSNR(dolp_pred, dolp_true, data_range=1.0).item()
             PSNR_s0 += PSNR(s0_pred, s0_true, data_range=1.0).item()
 
@@ -68,11 +68,11 @@ def test_gan(model, dataloader, device='cuda'):
 
 if __name__ == "__main__":
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    test_file_path = r'T3\Frame\data\patches\test_patches\OL_test.h5'
+    test_file_path = r'T3\Frame\data\patches\OL_test.h5'
     val_dataset = MyDataset(file_path=test_file_path, transform=None)
     val_loader = DataLoader(val_dataset, batch_size=3, num_workers=2, pin_memory=True,  shuffle=False)
     model = ResNetGenerator()
-    checkpoint_path = 'T3/Frame/ckpt/GAN_OL_3_best_psnr.pth'
+    checkpoint_path = 'T3/Frame/ckpt/GAN_OL_4_best_psnr.pth'
     checkpoint = torch.load(checkpoint_path)
     model.load_state_dict(checkpoint['generator_state_dict'])
     model = model.to(device)

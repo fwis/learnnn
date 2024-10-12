@@ -46,7 +46,7 @@ class ForkNet(nn.Module):
         
         x3_3 = F.tanh(self.conv3_3(x2))
         aop = self.conv4_3(x3_3)
-        aop = torch.atan(aop) / 2. + math.pi / 4
+        aop = torch.atan(aop)
         
         return s0, dolp, aop
     
@@ -59,7 +59,7 @@ class ForkLoss(nn.Module):
         # Total loss
         total_loss  = (0.1 * self.l1(s0_true, s0_pred) + 
                       self.l1(dolp_true, dolp_pred) + 
-                      0.05 * self.l1(aop_true, aop_pred))  - 0.02 * SSIM(aop_pred,aop_true, data_range= math.pi/2)
+                      0.05 * self.l1(aop_true, aop_pred))  - 0.02 * SSIM(aop_pred,aop_true, data_range= math.pi)
 
         return total_loss
     
@@ -528,7 +528,7 @@ class CustomContentLoss(nn.Module):
 
         # Total loss
         total_loss  = (0.1 * loss_s0 + 0.6 * loss_dolp + 0.3 * loss_aop)\
-                    - 0.02 * SSIM(aop_pred,aop_true, data_range= math.pi/2)\
+                    - 0.02 * SSIM(aop_pred,aop_true, data_range= math.pi)\
                     + physics_loss
         
         return total_loss

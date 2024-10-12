@@ -10,7 +10,7 @@ import time
 from torch.cuda.amp import GradScaler, autocast
 
 
-def train(model, train_loader, val_loader, device, num_epochs=10, learning_rate=0.001, weight_decay=1e-4, checkpoint_path='T3/Frame/ckpt/ForkNet_Fork.pth', savebest=True):
+def train(model, train_loader, val_loader, device, num_epochs=10, learning_rate=0.001, weight_decay=1e-4, checkpoint_path='T3/Frame/ckpt/ForkNet_Fork1.pth', savebest=True):
     # Model, criterion and optimizer
     model = model.to(device)
     # criterion = CustomLoss().to(device)
@@ -117,8 +117,8 @@ if __name__ == "__main__":
     batch_size = 64
     weight_decay = 1e-4
     
-    train_file_path = r'T3\Frame\data\patches\train_patches_100\Fork_train_100.h5'
-    test_file_path = r'T3\Frame\data\patches\test_patches_100\Fork_test_100.h5'
+    train_file_path = r'T3\Frame\data\patches\Fork_train.h5'
+    test_file_path = r'T3\Frame\data\patches\Fork_test.h5'
     train_dataset = MyDataset(train_file_path, transform=custom_transform)
     val_dataset = MyDataset(test_file_path)
     

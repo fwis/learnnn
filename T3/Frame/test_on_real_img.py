@@ -26,8 +26,21 @@ model.load_state_dict(checkpoint['generator_state_dict'])
 model = model.to(device)
 model.eval()
 
-input_data_path = r'T3\Frame\test\83_data.pt'
-img = torch.load(input_data_path).unsqueeze(0).unsqueeze(0).to(device)
+# Load and normalize the image data to [0, 1]
+input_image_path = 'T3/Frame/test/input.png'
+img = cv2.imread(input_image_path, cv2.IMREAD_GRAYSCALE)
+img = img / 255.0  # Normalize to [0, 1]
+img = torch.from_numpy(img).float().unsqueeze(0).unsqueeze(0).to(device)
+
+# Load and normalize the true images
+aop_true = cv2.imread('T3/Frame/test/AoP.png', cv2.IMREAD_GRAYSCALE) * np.pi / 255.0
+dolp_true = cv2.imread('T3/Frame/test/DoLP.png', cv2.IMREAD_GRAYSCALE) / 255.0
+s0_true = cv2.imread('T3/Frame/test/I.png', cv2.IMREAD_GRAYSCALE) / 255.0
+
+# Convert the true images to tensors
+aop_true = torch.from_numpy(aop_true).float().unsqueeze(0).unsqueeze(0)
+dolp_true = torch.from_numpy(dolp_true).float().unsqueeze(0).unsqueeze(0)
+s0_true = torch.from_numpy(s0_true).float().unsqueeze(0).unsqueeze(0)
 
 # forward
 with torch.no_grad():
@@ -37,9 +50,6 @@ aop = aop.cpu()
 dolp= dolp.cpu()
 s0 = s0.cpu()
 
-aop_true = torch.load(r'T3\Frame\test\83_aop.pt').cpu().unsqueeze(0).unsqueeze(0)
-dolp_true = torch.load(r'T3\Frame\test\83_dolp.pt').cpu().unsqueeze(0).unsqueeze(0)
-s0_true = torch.load(r'T3\Frame\test\83_s0.pt').cpu().unsqueeze(0).unsqueeze(0)/2
 
 SSIM_aop = SSIM(aop,aop_true,data_range=torch.pi/2)
 SSIM_dolp = SSIM(dolp,dolp_true,data_range=1.0)
@@ -69,33 +79,9 @@ aop = aop.cpu().squeeze().numpy()
 dolp = dolp.cpu().squeeze().numpy()
 s0 = s0.cpu().squeeze().numpy()
 
-# # Normalize AoP to range [0, 255] based on its range [0, π]
-# aop_norm = cv2.normalize(aop, None, 0, 180, cv2.NORM_MINMAX).astype(np.uint8)
-
-# # Normalize DoLP and S0 to range [0, 255] based on their range [0, 1]
-# dolp_norm = cv2.normalize(dolp, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
-# s0_norm = cv2.normalize(s0, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
-
-# Save normalized images
-# cv2.imwrite('AoP.png', aop_norm)
-# cv2.imwrite('DoLP.png', dolp_norm)
-# cv2.imwrite('S0.png', s0_norm)
-
 aop_true = aop_true.cpu().squeeze().numpy()
 dolp_true = dolp_true.cpu().squeeze().numpy()
 s0_true = s0_true.cpu().squeeze().numpy()
-
-# Normalize AoP to range [0, 255] based on its range [0, π]
-aop_true_norm = (((aop_true - np.pi/4) /np.pi)*255).astype(np.uint8)
-
-# Normalize DoLP and S0 to range [0, 255] based on their range [0, 1]
-dolp_true_norm = (dolp_true*255).astype(np.uint8)
-s0_true_norm = (s0_true*255).astype(np.uint8)
-
-# Save normalized images
-cv2.imwrite('AoP.png', aop_true_norm)
-cv2.imwrite('DoLP.png', dolp_true_norm)
-cv2.imwrite('S0.png', s0_true_norm)
 
 # Plot results
 dolp_min, dolp_max = 0, 1

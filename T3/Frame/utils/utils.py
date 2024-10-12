@@ -31,7 +31,7 @@ def normalize(data, lower, upper):
 Calculate the AoP
 '''
 def aop(x_0, x_45, x_90, x_135, normalization = False):
-    AoP = 0.5 * np.arctan((x_45 - x_135) / (x_0 - x_90 + 1e-8)) + math.pi/4.
+    AoP = 0.5 * np.arctan2((x_45 - x_135), (x_0 - x_90 + 1e-8))
     if normalization:
         AoP = normalize(AoP,0,1)
 

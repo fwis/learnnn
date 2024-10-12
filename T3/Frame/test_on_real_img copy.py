@@ -86,7 +86,7 @@ dolp_true = dolp_true.cpu().squeeze().numpy()
 s0_true = s0_true.cpu().squeeze().numpy()
 
 # Normalize AoP to range [0, 255] based on its range [0, π]
-aop_true_norm = (((aop_true - np.pi/4) /np.pi)*255).astype(np.uint8)
+aop_true_norm = ((aop_true /np.pi)*255).astype(np.uint8)
 
 # Normalize DoLP and S0 to range [0, 255] based on their range [0, 1]
 dolp_true_norm = (dolp_true*255).astype(np.uint8)

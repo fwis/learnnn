@@ -70,7 +70,7 @@ if __name__ == "__main__":
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     test_file_path = r'T3\Frame\data\patches\OL_test.h5'
     val_dataset = MyDataset(file_path=test_file_path, transform=None)
-    val_loader = DataLoader(val_dataset, batch_size=3, num_workers=2, pin_memory=True,  shuffle=False)
+    val_loader = DataLoader(val_dataset, batch_size=1, num_workers=2, pin_memory=True,  shuffle=False)
     model = ResNetGenerator()
     checkpoint_path = 'T3/Frame/ckpt/GAN_OL_4_best_psnr.pth'
     checkpoint = torch.load(checkpoint_path)

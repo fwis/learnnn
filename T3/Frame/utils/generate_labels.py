@@ -186,8 +186,8 @@ def slice_and_save_to_h5(dofp_tensor, s0_tensor, aop_tensor, dolp_tensor, label_
     print('Finished!')
             
             
-root_path = r'D:\WORKS\dataset\data_train\OL_DATA'
-label_path = r'D:\WORKS\dataset\patches\OL_train.h5'
+root_path = r'D:\WORKS\dataset\data_train\ForkNet'
+label_path = r'D:\WORKS\dataset\patches\Fork_train1.h5'
 dofp_tensor, s0_tensor, aop_tensor, dolp_tensor = create_labels(root_path)
 patch_size = 100
 coincide = 20

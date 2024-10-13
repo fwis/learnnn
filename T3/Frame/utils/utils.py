@@ -30,12 +30,11 @@ def normalize(data, lower, upper):
 '''
 Calculate the AoP
 '''
-def aop(x_0, x_45, x_90, x_135, normalization = False):
-    AoP = 0.5 * np.arctan2((x_45 - x_135), (x_0 - x_90 + 1e-8))
-    AoP = np.mod(AoP, np.pi)
+def aop(x_0, x_45, x_90, x_135, normalization = True):
+    AoP = 0.5 * np.arctan2((x_45 - x_135), (x_0 - x_90 + 1e-8)) # range in [-pi/2, pi/2]
     
     if normalization:
-        AoP = AoP / np.pi
+        AoP = (AoP + np.pi / 2) / np.pi
 
     return AoP
 
@@ -43,9 +42,9 @@ def aop(x_0, x_45, x_90, x_135, normalization = False):
 Calculate the DoLP
 '''
 def dolp(x_0, x_45, x_90, x_135, normalization = False):
-    Int = 0.5*(x_0 + x_45 + x_90 + x_135)   
-    DoLP = np.sqrt(np.square(x_0-x_90) + np.square(x_45-x_135))/(Int+1e-8)
-    DoLP[np.where(Int==0)] = 0   #if Int==0, set the DoLP to 0
+    s0 = 0.5*(x_0 + x_45 + x_90 + x_135)   
+    DoLP = np.sqrt(np.square(x_0-x_90) + np.square(x_45-x_135))/(s0+1e-8)
+    DoLP[np.where(s0==0)] = 0   #if Int==0, set the DoLP to 0
     if normalization:
         DoLP = normalize(DoLP,0,1)
     

@@ -32,7 +32,7 @@ def test(model, dataloader, device='cuda'):
             aop_pred, dolp_pred, s0_pred = model(inputs)
             
             # Calculate SSIM, PSNR, MSE
-            SSIM_aop += SSIM(aop_pred, aop_true, data_range=torch.pi).item()
+            SSIM_aop += SSIM(aop_pred, aop_true, data_range=1.0).item()
             SSIM_dolp += SSIM(dolp_pred, dolp_true, data_range=1.0).item()
             SSIM_s0 += SSIM(s0_pred, s0_true, data_range=1.0).item()
 
@@ -40,7 +40,7 @@ def test(model, dataloader, device='cuda'):
             RMSE_aop += torch.mean((aop_pred - aop_true) ** 2).item()
             RMSE_dolp += torch.mean((dolp_pred - dolp_true) ** 2).item()
 
-            PSNR_aop += PSNR(aop_pred, aop_true, data_range=torch.pi).item()
+            PSNR_aop += PSNR(aop_pred, aop_true, data_range=1.0).item()
             PSNR_dolp += PSNR(dolp_pred, dolp_true, data_range=1.0).item()
             PSNR_s0 += PSNR(s0_pred, s0_true, data_range=1.0).item()
 
@@ -67,12 +67,12 @@ def test(model, dataloader, device='cuda'):
         print(f'PSNR of S0: {PSNR_s0}')
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-test_file_path = r'T3\Frame\data\patches\Fork_test.h5'
+test_file_path = r'T3\Frame\data\patches\OL_test1.h5'
 val_dataset = MyDataset(file_path=test_file_path, transform=None)
 val_loader = DataLoader(val_dataset, batch_size=1, num_workers=0, pin_memory=True,  shuffle=False)
 # model = ResNet()
 model = ForkNet()
-checkpoint_path = 'T3/Frame/ckpt/ForkNet_Fork2_best.pth'
+checkpoint_path = 'T3/Frame/ckpt/ForkNet_OL1.pth'
 checkpoint = torch.load(checkpoint_path)
 model.load_state_dict(checkpoint['model_state_dict'])
 model = model.to(device)

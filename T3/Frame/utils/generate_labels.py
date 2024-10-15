@@ -48,8 +48,8 @@ def create_labels(root_folder):
                 img_s0 = torch.zeros_like(images[0].to(device))
                 dofp[0::2, 0::2] = images[0][0::2, 0::2]
                 dofp[0::2, 1::2] = images[45][0::2, 1::2]
-                dofp[1::2, 0::2] = images[90][1::2, 0::2]
-                dofp[1::2, 1::2] = images[135][1::2, 1::2]
+                dofp[1::2, 1::2] = images[90][1::2, 1::2]
+                dofp[1::2, 0::2] = images[135][1::2, 0::2]
                 img_aop = aop(images[0], images[45], images[90], images[135])
                 img_dolp = dolp(images[0], images[45], images[90], images[135])
                 img_dolp[img_dolp > 1] = 1
@@ -186,10 +186,10 @@ def slice_and_save_to_h5(dofp_tensor, s0_tensor, aop_tensor, dolp_tensor, label_
     print('Finished!')
             
             
-root_path = r'D:\WORKS\dataset\data_train\ForkNet'
-label_path = r'D:\WORKS\dataset\patches\Fork_train1.h5'
+root_path = r'D:\WORKS\dataset\data_test\Fork_test'
+label_path = r'D:\WORKS\dataset\patches\Fork_test1.h5'
 dofp_tensor, s0_tensor, aop_tensor, dolp_tensor = create_labels(root_path)
 patch_size = 100
 coincide = 20
 stride = patch_size - coincide
-slice_and_save_to_h5(dofp_tensor, s0_tensor, aop_tensor, dolp_tensor, label_path, patch_size, stride, slice=True)
+slice_and_save_to_h5(dofp_tensor, s0_tensor, aop_tensor, dolp_tensor, label_path, patch_size, stride, slice=False)

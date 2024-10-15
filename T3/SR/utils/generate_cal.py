@@ -46,8 +46,8 @@ def create_labels(root_folder):
                 dofp = torch.zeros_like(images[0].to(device))
                 dofp[0::2, 0::2] = images[0][0::2, 0::2]
                 dofp[0::2, 1::2] = images[45][0::2, 1::2]
-                dofp[1::2, 0::2] = images[90][1::2, 0::2]
-                dofp[1::2, 1::2] = images[135][1::2, 1::2]
+                dofp[1::2, 1::2] = images[90][1::2, 1::2]
+                dofp[1::2, 0::2] = images[135][1::2, 0::2]
                 img_i0 = images[0]
                 img_i45 = images[45]
                 img_i90 = images[90]

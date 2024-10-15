@@ -131,7 +131,7 @@ def train(generator, discriminator, train_loader, val_loader, device, num_epochs
         val_psnr_s0 = 0.0
         psnr_val_s0 = torchmetrics.PeakSignalNoiseRatio(data_range=1.0).to(device)
         psnr_val_dolp = torchmetrics.PeakSignalNoiseRatio(data_range=1.0).to(device)
-        psnr_val_aop = torchmetrics.PeakSignalNoiseRatio(data_range=torch.pi).to(device)
+        psnr_val_aop = torchmetrics.PeakSignalNoiseRatio(data_range=1.0).to(device)
         with torch.no_grad():
             for data, aop, dolp, s0 in val_loader:
                 inputs = data.to(device)
@@ -220,8 +220,8 @@ if __name__ == "__main__":
     batch_size = 50
     weight_decay = 1e-4
 
-    train_file_path = r'T3\Frame\data\patches\OL_train.h5'
-    test_file_path = r'T3\Frame\data\patches\OL_test.h5'
+    train_file_path = r'T3\Frame\data\patches\OL_train1.h5'
+    test_file_path = r'T3\Frame\data\patches\OL_test1.h5'
     train_dataset = MyDataset(train_file_path, transform=custom_transform)
     val_dataset = MyDataset(test_file_path)
 

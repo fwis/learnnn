@@ -43,3 +43,8 @@ T3/Frame/data/patches/Fork_test1.h5
 T3/Frame/data/patches/Fork_train1.h5
 T3/Frame/data/patches/OL_test1.h5
 T3/Frame/data/patches/OL_train1.h5
+T3/Frame/output/aop.png
+T3/Frame/output/dolp.png
+T3/Frame/output/s0.png
+T3/Frame/test/dofp_ol.png
+T3/Frame/test/dofp.png

@@ -72,7 +72,7 @@ val_dataset = MyDataset(file_path=test_file_path, transform=None)
 val_loader = DataLoader(val_dataset, batch_size=1, num_workers=0, pin_memory=True,  shuffle=False)
 # model = ResNet()
 model = ForkNet()
-checkpoint_path = 'T3/Frame/ckpt/ForkNet_OL1.pth'
+checkpoint_path = 'T3/Frame/ckpt/ForkNet_OL_best.pth'
 checkpoint = torch.load(checkpoint_path)
 model.load_state_dict(checkpoint['model_state_dict'])
 model = model.to(device)

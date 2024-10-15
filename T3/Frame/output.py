@@ -19,14 +19,14 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 model = ForkNet()
 
 # Load checkpoint
-checkpoint_path = 'T3/Frame/ckpt/ForkNet_Fork2.pth'
+checkpoint_path = 'T3/Frame/ckpt/ForkNet_OL_best.pth'
 checkpoint = torch.load(checkpoint_path)
 model.load_state_dict(checkpoint['model_state_dict'])
 model = model.to(device)
 model.eval()
 
 # Load and normalize the image data to [0, 1]
-input_image_path = r'T3\Frame\test\dofp.png'
+input_image_path = r'T3\Frame\test\dofp_OL.png'
 img = cv2.imread(input_image_path, cv2.IMREAD_GRAYSCALE)
 img = img / 255.0  # Normalize to [0, 1]
 img = torch.from_numpy(img).float().unsqueeze(0).unsqueeze(0).to(device)
@@ -37,6 +37,7 @@ with torch.no_grad():
 
 # Move outputs to CPU
 aop = aop.cpu()
+# print(aop.min(),aop.max())
 dolp = dolp.cpu()
 s0 = s0.cpu()
 

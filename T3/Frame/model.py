@@ -46,7 +46,6 @@ class ForkNet(nn.Module):
         
         x3_3 = F.tanh(self.conv3_3(x2))
         aop = self.conv4_3(x3_3)
-        aop = torch.atan(aop)
         
         return s0, dolp, aop
     
@@ -54,12 +53,12 @@ class ForkLoss(nn.Module):
     def __init__(self, weight=1):
         super(ForkLoss, self).__init__()
         self.l1 = nn.L1Loss()
-        
+        self.mse = nn.MSELoss
     def forward(self, s0_pred, s0_true, dolp_pred, dolp_true, aop_pred, aop_true):
         # Total loss
         total_loss  = (0.1 * self.l1(s0_true, s0_pred) + 
                       self.l1(dolp_true, dolp_pred) + 
-                      0.05 * self.l1(aop_true, aop_pred))  - 0.03 * SSIM(aop_pred,aop_true, data_range=1.0)
+                      0.05 * self.l1(aop_true, aop_pred)) - 0.02 * torch.log(SSIM(aop_pred,aop_true, data_range=1.0))
 
         return total_loss
     

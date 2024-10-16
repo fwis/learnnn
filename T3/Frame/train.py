@@ -52,7 +52,7 @@ def train(model, train_loader, val_loader, device, num_epochs=10, learning_rate=
             train_loss += loss.item()
             
             if i % 100 == 99:
-                print(f'[Epoch {epoch + 1}, Batch {i + 1}] Train loss: {running_loss / 50:.4f}')
+                print(f'[Epoch {epoch + 1}, Batch {i + 1}] Train loss: {running_loss / 100:.4f}')
                 running_loss = 0.0
                 
         # Calculate elapsed time and training loss
@@ -119,7 +119,7 @@ if __name__ == "__main__":
     
     train_file_path = r'T3\Frame\data\patches\OL_train1.h5'
     test_file_path = r'T3\Frame\data\patches\OL_test1.h5'
-    train_dataset = MyDataset(train_file_path, transform=custom_transform)
+    train_dataset = MyDataset(train_file_path, transform=None)
     val_dataset = MyDataset(test_file_path)
     
     # train_file_path1 = r"T3\Frame\data\patches\train_patches_100\OL_train_100.h5"

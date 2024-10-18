@@ -1,6 +1,5 @@
 import torch
 import torch.nn as nn
-from torch.optim.lr_scheduler import ExponentialLR
 import numpy as np
 import matplotlib.pyplot as plt
 from model import MyDataset, ForkNet, ResNet, ResNetFPN, ResNetGenerator
@@ -37,7 +36,7 @@ with torch.no_grad():
 
 # Move outputs to CPU
 aop = aop.cpu()
-# print(aop.min(),aop.max())
+aop = np.mod(aop * 180 - 90, 180) / 180
 dolp = dolp.cpu()
 s0 = s0.cpu()
 

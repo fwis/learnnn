@@ -160,6 +160,10 @@ class CustomLoss(nn.Module):
         # dolp_pred = torch.mean(torch.sqrt(torch.square(output[:, 0, :, :] - output[:, 2, :, :]) + torch.square(output[:, 1, :, :] - output[:, 3, :, :])) / (torch.mean(s0_pred) + 1e-8))
         # dolp_true = torch.mean(torch.sqrt(torch.square(labels[:, 0, :, :] - labels[:, 2, :, :]) + torch.square(labels[:, 1, :, :] - labels[:, 3, :, :])) / (torch.mean(s0_true) + 1e-8))
         # dolp_loss = self.mse(dolp_pred,dolp_true)
+        # aop_pred = 0.5 * torch.atan2(output[:, 1, :, :] - output[:, 3, :, :], output[:, 0, :, :] - output[:, 2, :, :])
+        # aop_true = 0.5 * torch.atan2(labels[:, 1, :, :] - labels[:, 3, :, :], labels[:, 0, :, :] - labels[:, 2, :, :])
+        # aop_loss = self.mse(aop_true,aop_pred)
+        
         total_loss = loss + 0.2 * s0_loss + 0.5 * (Q_loss + U_loss) 
         
         return total_loss

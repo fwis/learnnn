@@ -72,7 +72,7 @@ if __name__ == "__main__":
     val_dataset = MyDataset(file_path=test_file_path, transform=None)
     val_loader = DataLoader(val_dataset, batch_size=1, num_workers=2, pin_memory=True,  shuffle=False)
     model = ResNetGenerator()
-    checkpoint_path = 'T3/Frame/ckpt/GAN_OL_4_best_psnr.pth'
+    checkpoint_path = 'T3/Frame/ckpt/GAN1_OL_best_psnr.pth'
     checkpoint = torch.load(checkpoint_path)
     model.load_state_dict(checkpoint['generator_state_dict'])
     model = model.to(device)

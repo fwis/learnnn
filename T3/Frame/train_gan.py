@@ -4,13 +4,13 @@ import torch.optim as optim
 from torch.utils.data import DataLoader, Dataset, random_split, ConcatDataset
 from torch.optim.lr_scheduler import ExponentialLR
 import os
-from model import MyDataset, ResNetGenerator, Discriminator, CustomContentLoss, custom_transform, PerceptualLoss
+from model import MyDataset, ResNetGenerator, Discriminator, CustomContentLoss, custom_transform, PerceptualLoss, Generator
 from torch.utils.tensorboard import SummaryWriter
 import time
 from torch.cuda.amp import GradScaler, autocast
 import torchmetrics
 
-def train(generator, discriminator, train_loader, val_loader, device, num_epochs, learning_rate, weight_decay=1e-4, checkpoint_path='T3/Frame/ckpt/GAN_OL_4.pth', savebest=True):
+def train(generator, discriminator, train_loader, val_loader, device, num_epochs, learning_rate, weight_decay=1e-4, checkpoint_path='T3/Frame/ckpt/GAN1_OL.pth', savebest=True):
     generator = generator.to(device)
     discriminator = discriminator.to(device)
     
@@ -222,7 +222,7 @@ if __name__ == "__main__":
 
     train_file_path = r'T3\Frame\data\patches\OL_train1.h5'
     test_file_path = r'T3\Frame\data\patches\OL_test1.h5'
-    train_dataset = MyDataset(train_file_path, transform=custom_transform)
+    train_dataset = MyDataset(train_file_path)
     val_dataset = MyDataset(test_file_path)
 
     train_loader = DataLoader(train_dataset, batch_size=batch_size, num_workers=10, pin_memory=True, shuffle=True)

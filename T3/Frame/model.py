@@ -465,6 +465,54 @@ class ResNetGenerator(nn.Module):
         
         return aop, dolp, s0
 
+class Generator(nn.Module):
+    def __init__(self, num_blocks=[1, 1, 2]):
+        super(Generator, self).__init__()
+        self.conv1 = nn.Conv2d(1, 64, kernel_size=5, stride=1, padding=2, bias=False)
+        self.bn1 = nn.BatchNorm2d(64)
+        self.relu = nn.ReLU(inplace=True)
+        
+        # Residual blocks
+        self.layer1 = nn.Sequential(*resnet_block(64, 64, num_blocks[0], first_block=True))
+        self.layer2 = nn.Sequential(*resnet_block(64, 128, num_blocks[1]))
+        
+        self.layer3_1 = nn.Sequential(*resnet_block(128, 32, num_blocks[2]))
+        self.layer3_2 = nn.Sequential(*resnet_block(128, 32, num_blocks[2]))
+        self.layer3_3 = nn.Sequential(*resnet_block(128, 32, num_blocks[2]))
+        
+        # Output layer
+        # Depthwise separable convolution
+        self.conv1_1 = nn.Conv2d(32, 32, kernel_size=3, stride=1, padding=1, groups=32)
+        self.conv1_2 = nn.Conv2d(32, 32, kernel_size=3, stride=1, padding=1, groups=32)
+        self.conv1_3 = nn.Conv2d(32, 32, kernel_size=3, stride=1, padding=1, groups=32)
+        self.conv2_1 = nn.Conv2d(32, 1, kernel_size=1, stride=1, padding=0)
+        self.conv2_2 = nn.Conv2d(32, 1, kernel_size=1, stride=1, padding=0)
+        self.conv2_3 = nn.Conv2d(32, 1, kernel_size=1, stride=1, padding=0)
+        
+    def forward(self, x):
+        x = self.conv1(x)
+        x = self.bn1(x)
+        x = self.relu(x)
+        x = self.layer1(x)
+        x = self.layer2(x)
+
+        s0 = self.layer3_1(x)
+        s0 = self.conv1_1(s0)
+        s0 = self.conv2_1(s0)
+        
+        s1 = self.layer3_2(x)
+        s1 = self.conv1_2(s1)
+        s1 = self.conv2_2(s1)
+        
+        s2 = self.layer3_3(x)
+        s2 = self.conv1_3(s2)
+        s2 = self.conv2_3(s2)
+        
+        aop = (0.5 * torch.atan2(s2,s1) + torch.pi/2) / torch.pi
+        dolp = torch.sqrt(torch.square(s1) + torch.square(s2))/(2 * s0 + 1e-8)
+        
+        return aop, dolp, s0
+     
 # Discriminator
 class Discriminator(nn.Module):
     def __init__(self):
@@ -527,8 +575,8 @@ class CustomContentLoss(nn.Module):
 
         # Total loss
         total_loss  = (0.1 * loss_s0 + 0.6 * loss_dolp + 0.3 * loss_aop)\
-                    - 0.02 * SSIM(aop_pred,aop_true, data_range=1.0)\
-                    + physics_loss
+                    - 0.03 * SSIM(aop_pred,aop_true, data_range=1.0)\
+                    + 5 * physics_loss
         
         return total_loss
 
